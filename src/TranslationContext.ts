@@ -47,7 +47,7 @@ export class TranslationContext {
   postToAstMap(astMapNode: { loc: string; node: AstCoalescer }): void {
     this._storeAstNode(astMapNode);
   }
-  
+
   getFromAstMap(astMapLoc: string): AstCoalescer {
     return this._getAstNode(astMapLoc);
   }
