@@ -7,6 +7,19 @@ export default function AuthorizationFilterRule(
 ): ASTVisitor {
   // Returns an ASTVisitor
   return {
+    // The Field visitor assesses whether each field of a selection
+    // set needs an augmented filter argument. This visitor must comply
+    // to the following requirements:
+    //   1) If `Field`'s type has a @deepAuth directive, it needs a 
+    //      root authorization filter.
+    //   2) If `Field` has an exisiting filter argument, that filter
+    //      must be augmented to ensure nested filters are compliant.
+    //   3) If (1) and (2), then replace existing filter argument with
+    //      wrapped `AND [ (1), (2) ]`. If only (1), then add (1) as 
+    //      filter argument. If only (2), replace filter argument
+    //      with (2).
+    //   4) If `Field` has neither @deepAuth directive or existing
+    //      filter arguments, no updates to AST are needed.
     Field(
       node: ASTNode,
       key: string | number | undefined,
@@ -28,6 +41,30 @@ export default function AuthorizationFilterRule(
 
       // The @return value of visitor functions elicit special behavior.
       // In most cases, we just want to return undefined.
+    },
+    
+    // To deal with nested filters, we can also leverage the native
+    // recursion of `visit()`. This would potentially use visitors
+    // for `Argument`, `ListValue`, `ObjectValue`, and `ObjectField`.
+    ObjectField(
+      node: ASTNode,
+      key: string | number | undefined,
+      parent: any,
+      path: ReadonlyArray<string | number>,
+      ancestors: any,
+    ) {
+      const ToDoList = `
+         1) Check if child of 'filter' Argument.
+            how: Use index of 'arguments' in 'path' array. Argument node
+                 will be at index+2 in 'ancestors' array.
+            yes? Proceed to 2
+            no?  return undefined (to proceed with visitation)
+         2) Return undefined if node.name.value is a logical operator (AND, OR).
+         3) Process 'node.name.value' to be able to get TypeInfo for the filter
+            argument component.
+         4) If (3) indicates type is subject to @deepAuth, wrap the ObjectField
+            with the relevant root authorization filter for that type using AND.
+      `;
     },
   };
 }
