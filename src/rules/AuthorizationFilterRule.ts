@@ -1,5 +1,5 @@
 // import GraphQL type definitions
-import { ASTVisitor, ASTNode } from 'graphql';
+import { ASTVisitor, ASTNode, getNamedType, isObjectType } from 'graphql';
 import { TranslationContext } from '../TranslationContext';
 
 export default function AuthorizationFilterRule(
@@ -38,7 +38,18 @@ export default function AuthorizationFilterRule(
              to 4a (with a higher order function or something similar).
          4c) Post result of 4b to AstMap using 'context'.
       `;
-
+      const fieldType = getNamedType(context.getType());
+      
+      // Currently does not support Interface or Union types.
+      // Check for ObjectTypes that can have @deepAuth directive.
+      if (isObjectType(fieldType)) {
+        const typeDef = context.getTypeDef(fieldType);
+        const typeDirectives = typeDef.astNode ? typeDef.asNode.directives : undefined;
+        const authDirective = typeDirectives ? 
+              typeDirectives.filter( directive => directive.name.value === 'deepAuth' ) : undefined;
+        // parse authDirective as filter argument
+        // 
+      }
       // The @return value of visitor functions elicit special behavior.
       // In most cases, we just want to return undefined.
     },
