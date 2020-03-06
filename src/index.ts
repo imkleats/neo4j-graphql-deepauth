@@ -1,18 +1,24 @@
-import { GraphQLResolveInfo, visitInParallel, visitWithTypeInfo, TypeInfo, visit, ASTVisitor, ASTNode } from 'graphql';
+import { GraphQLResolveInfo, visitInParallel, visitWithTypeInfo, TypeInfo, visit, ASTVisitor, ASTNode, OperationDefinitionNode, FragmentDefinitionNode, GraphQLSchema, GraphQLObjectType, GraphQLOutputType, FieldNode, DocumentNode } from 'graphql';
 import { set } from 'lodash';
 import { TranslationContext } from './TranslationContext';
 import AuthorizationFilterRule from './rules/AuthorizationFilterRule';
+import { Path } from 'graphql/jsutils/Path';
 
 export type TranslationRule = (ctx: TranslationContext) => ASTVisitor;
 export type AstCoalescer = (astMap: AstMap | null) => any;
 export interface AstMap {
   [loc: string]: AstCoalescer;
+};
+export type ResolveInfo = GraphQLResolveInfo | LimitedResolveInfo
+export interface LimitedResolveInfo {
+  readonly schema: GraphQLSchema;
+  readonly operation: DocumentNode;
 }
 
 export function translate(
   params: { [argName: string]: any },
   ctx: any,
-  resolveInfo: GraphQLResolveInfo,
+  resolveInfo: ResolveInfo,
   rules: TranslationRule[] = [AuthorizationFilterRule], // default to specifiedRules? what to include?
   coalescer: AstCoalescer = coalesce,
   // merge: (oldNode: AstNode, newNode: AstNode) => AstNode,

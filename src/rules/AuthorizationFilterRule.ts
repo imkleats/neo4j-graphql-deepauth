@@ -1,5 +1,5 @@
 // import GraphQL type definitions
-import { ASTVisitor, ASTNode } from 'graphql';
+import { ASTVisitor, ASTNode, getNamedType, } from 'graphql';
 import { TranslationContext } from '../TranslationContext';
 
 export default function AuthorizationFilterRule(
@@ -25,6 +25,7 @@ export default function AuthorizationFilterRule(
              to 4a (with a higher order function or something similar).
          4c) Post result of 4b to AstMap using 'context'.
       `;
+      
 
       // The @return value of visitor functions elicit special behavior.
       // In most cases, we just want to return undefined.

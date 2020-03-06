@@ -1,7 +1,6 @@
 import {
   GraphQLSchema,
   TypeInfo,
-  GraphQLResolveInfo,
   GraphQLOutputType,
   GraphQLCompositeType,
   GraphQLInputType,
@@ -11,7 +10,7 @@ import {
   ASTNode,
 } from 'graphql';
 import Maybe from 'graphql/tsutils/Maybe';
-import { AstCoalescer } from '..';
+import { AstCoalescer, ResolveInfo } from '.';
 
 // Modeling after graphql-js ValidationContext
 // Still a WIP to determine what might be helpful to
@@ -29,10 +28,10 @@ export class TranslationContext {
   constructor(
     params: { [argName: string]: any }, // is this needed? or is it already in resolveInfo?
     reqCtx: any,
-    resolveInfo: GraphQLResolveInfo,
+    resolveInfo: ResolveInfo,
     typeInfo: TypeInfo,
     storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void,
-    getAstNode: (astMapLoc: string) => void,
+    getAstNode: (astMapLoc: string) => AstCoalescer,
   ) {
     this._ast = resolveInfo.operation;
     this._reqCtx = reqCtx;
@@ -50,6 +49,10 @@ export class TranslationContext {
 
   getFromAstMap(astMapLoc: string): AstCoalescer {
     return this._getAstNode(astMapLoc);
+  }
+
+  getSchema(): GraphQLSchema {
+    return this._schema;
   }
 
   getType(): Maybe<GraphQLOutputType> {
