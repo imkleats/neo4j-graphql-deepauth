@@ -24,6 +24,8 @@ export class TranslationContext {
   protected _typeInfo: TypeInfo;
   protected _reqCtx: any;
   protected _params: { [argName: string]: any };
+  protected _state: Object;
+  protected _authActions: Array<{ action: string; payload: any }>;
 
   constructor(
     params: { [argName: string]: any }, // is this needed? or is it already in resolveInfo?
@@ -40,9 +42,27 @@ export class TranslationContext {
     this._storeAstNode = storeAstNode;
     this._getAstNode = getAstNode;
     this._params = params;
+    this._state = Object.create(null);
+    this._authActions = [];
   }
 
   // accessor and utility methods?
+  addAuthAction(authAction: { action: string; payload: any }): void {
+    this._authActions.push(authAction);
+  }
+
+  getAuthActions(): Array<{ action: string; payload: any }> {
+    return this._authActions;
+  }
+
+  setState(newState: Object): void {
+    this._state = Object.assign(this._state, newState);
+  }
+
+  currentState(): Readonly<Object> {
+    return this._state;
+  }
+
   postToAstMap(astMapNode: { loc: string; node: AstCoalescer }): void {
     this._storeAstNode(astMapNode);
   }

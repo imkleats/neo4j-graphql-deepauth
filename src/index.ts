@@ -1,5 +1,21 @@
-import { GraphQLResolveInfo, visitInParallel, visitWithTypeInfo, TypeInfo, visit, ASTVisitor, ASTNode, OperationDefinitionNode, FragmentDefinitionNode, GraphQLSchema, GraphQLObjectType, GraphQLOutputType, FieldNode, DocumentNode } from 'graphql';
-import { set } from 'lodash';
+import {
+  GraphQLResolveInfo,
+  visitInParallel,
+  visitWithTypeInfo,
+  TypeInfo,
+  visit,
+  ASTVisitor,
+  ASTNode,
+  OperationDefinitionNode,
+  FragmentDefinitionNode,
+  GraphQLSchema,
+  GraphQLObjectType,
+  GraphQLOutputType,
+  FieldNode,
+  DocumentNode,
+  ArgumentNode,
+} from 'graphql';
+import { set, unset } from 'lodash';
 import { TranslationContext } from './TranslationContext';
 import AuthorizationFilterRule from './rules/AuthorizationFilterRule';
 import { Path } from 'graphql/jsutils/Path';
@@ -8,12 +24,19 @@ export type TranslationRule = (ctx: TranslationContext) => ASTVisitor;
 export type AstCoalescer = (astMap: AstMap | null) => any;
 export interface AstMap {
   [loc: string]: AstCoalescer;
-};
-export type ResolveInfo = GraphQLResolveInfo | LimitedResolveInfo
+}
+export type ResolveInfo = GraphQLResolveInfo | LimitedResolveInfo;
 export interface LimitedResolveInfo {
   readonly schema: GraphQLSchema;
   readonly operation: DocumentNode;
 }
+export type AuthAction = {
+  action: string;
+  payload: {
+    path?: Array<string | number>;
+    node?: ArgumentNode;
+  };
+};
 
 export function translate(
   params: { [argName: string]: any },
@@ -61,13 +84,22 @@ export function translate(
 
 export const coalesce: AstCoalescer = astMap => {
   const requestAst: ASTNode = astMap ? (astMap['originalQuery'] ? astMap.originalQuery(astMap) : {}) : {};
-  const authFilters: Array<{ path: string; node: ASTNode }> = astMap
-    ? astMap['authFilters']
-      ? astMap.authFilters(astMap)
-      : []
-    : [];
+  const authFilters: Array<AuthAction> = astMap ? (astMap['authFilters'] ? astMap.authFilters(astMap) : []) : [];
 
-  authFilters.map((authFilter: any) => set(requestAst, authFilter.path, authFilter.node));
+  authFilters.map((authAction: AuthAction) => {
+    switch (authAction.action) {
+      case 'SET':
+        if (authAction.payload.path && authAction.payload.node)
+          set(requestAst, authAction.payload.path, authAction.payload.node);
+        break;
+      case 'DELETE':
+        if (authAction.payload.path) unset(requestAst, authAction.payload.path);
+        break;
+      case 'SKIP':
+      default:
+        break;
+    }
+  });
 
   return requestAst;
 };
