@@ -43,28 +43,16 @@ export default function AuthorizationFilterRule(
       path: ReadonlyArray<string | number>,
       ancestors: any,
     ) {
-      const ToDoList = `
-        1a) Check for directive on field's type in schema.
-        1b) Check for filter arguments on Field node.
-        2a) Modify or remove existing filter arguments.
-        2b) If 1a is true, wrap 2a with the ACL filter.
-        3)  Discern appropriate path for new/modified filter arguments.
-        4a) Get current authFilters list from AstMap using 'context'.
-        4b) Append object with {path: results_of_3, node: results_of_2}
-            to 4a (with a higher order function or something similar).
-        4c) Post result of 4b to AstMap using 'context'.
-      `;
-
       function populateArgsInPath(path: string, args: string[]): string {
         const ctxParams = context.fromRequestContext('deepAuthParams');
-        const populatedPath = args.reduce((acc: string, param: string) => {
+        const populatedPath = args ? args.reduce((acc: string, param: string) => {
           return acc.replace(param, ctxParams[param]);
-        }, path);
+        }, path) : path;
         return populatedPath;
       }
 
       function parseAuthFilter(query: string): ArgumentNode | undefined {
-        const ast = parse(`{ q(filter: {${query})} }`);
+        const ast = parse(`{ q(filter: {${query}}) }`);
         // Filter arguments will be at the following address:
         // [ 'definitions', 0, 'selectionSet', 'selections', 0, 'arguments', 0 ]
         let filterArg;
@@ -106,11 +94,12 @@ export default function AuthorizationFilterRule(
                   }
                   break;
                 case 'variables':
-                  let authVariables = [];
+                  let authVariables: string[] = [];
                   if (arg.value.kind == 'ListValue') {
                     arg.value.values.map(varArg => {
                       if (varArg.kind == 'StringValue') authVariables.push(varArg.value);
                     });
+                    acc.variables = authVariables;
                   }
                   break;
               }

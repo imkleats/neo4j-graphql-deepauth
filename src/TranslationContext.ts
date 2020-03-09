@@ -17,7 +17,7 @@ import { AstCoalescer, ResolveInfo } from '.';
 // access routinely in TranslationRules.
 
 export class TranslationContext {
-  protected _ast: ASTNode;
+  //protected _ast: ASTNode;
   protected _storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void;
   protected _getAstNode: (astMapLoc: string) => AstCoalescer;
   protected _schema: GraphQLSchema;
@@ -35,7 +35,7 @@ export class TranslationContext {
     storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void,
     getAstNode: (astMapLoc: string) => AstCoalescer,
   ) {
-    this._ast = resolveInfo.operation;
+    //this._ast = resolveInfo.operation;
     this._reqCtx = reqCtx;
     this._schema = resolveInfo.schema;
     this._typeInfo = typeInfo;

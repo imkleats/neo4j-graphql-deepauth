@@ -41,14 +41,26 @@ export type AuthAction = {
 export function translate(
   params: { [argName: string]: any },
   ctx: any,
-  resolveInfo: ResolveInfo,
+  resolveInfo: GraphQLResolveInfo,
   rules: TranslationRule[] = [AuthorizationFilterRule], // default to specifiedRules? what to include?
   coalescer: AstCoalescer = coalesce,
   // merge: (oldNode: AstNode, newNode: AstNode) => AstNode,
 ): any {
   const abortObj = Object.freeze({});
   const typeInfo = new TypeInfo(resolveInfo.schema);
-  const documentAST = resolveInfo.operation;
+
+  const frags = []
+  for (let defn in resolveInfo.fragments) {
+      frags.push(resolveInfo.fragments[defn]);
+  }
+  const documentAST: DocumentNode = {
+      kind: 'Document',
+      definitions: [
+          resolveInfo.operation,
+          ...frags
+      ]
+  };
+
   const queryMap: AstMap = {
     originalQuery: () => documentAST,
   };
