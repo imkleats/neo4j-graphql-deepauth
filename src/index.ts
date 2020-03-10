@@ -115,3 +115,24 @@ export const coalesce: AstCoalescer = astMap => {
 
   return requestAst;
 };
+
+export function applyDeepAuth(
+  params: { [argName: string]: any },
+  ctx: any,
+  resolveInfo: GraphQLResolveInfo,
+  rules: TranslationRule[] = [AuthorizationFilterRule], // default to specifiedRules? what to include?
+  coalescer: AstCoalescer = coalesce,
+  // merge: (oldNode: AstNode, newNode: AstNode) => AstNode,
+): GraphQLResolveInfo {
+  const transformedDocument: DocumentNode = translate(params, ctx, resolveInfo, rules, coalescer);
+  const {operation, fragments} = transformedDocument.definitions.reduce((acc: {operation: OperationDefinitionNode, fragments: { [key: string]: FragmentDefinitionNode }}, defn) => {
+    if (defn.kind == 'OperationDefinition') acc.operation = defn
+    if (defn.kind == 'FragmentDefinition') acc.fragments[defn.name.value] = defn
+    return acc;
+  }, {operation: resolveInfo.operation, fragments: resolveInfo.fragments})
+  return {
+    ...resolveInfo,
+    operation,
+    fragments
+  };
+}
