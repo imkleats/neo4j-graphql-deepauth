@@ -1,24 +1,20 @@
 import {
+  ArgumentNode,
+  ASTNode,
+  ASTVisitor,
+  DocumentNode,
+  FragmentDefinitionNode,
   GraphQLResolveInfo,
-  visitInParallel,
-  visitWithTypeInfo,
+  GraphQLSchema,
+  OperationDefinitionNode,
   TypeInfo,
   visit,
-  ASTVisitor,
-  ASTNode,
-  OperationDefinitionNode,
-  FragmentDefinitionNode,
-  GraphQLSchema,
-  GraphQLObjectType,
-  GraphQLOutputType,
-  FieldNode,
-  DocumentNode,
-  ArgumentNode,
+  visitInParallel,
+  visitWithTypeInfo,
 } from 'graphql';
 import { set, unset } from 'lodash';
-import { TranslationContext } from './TranslationContext';
 import AuthorizationFilterRule from './rules/AuthorizationFilterRule';
-import { Path } from 'graphql/jsutils/Path';
+import { TranslationContext } from './TranslationContext';
 
 export type TranslationRule = (ctx: TranslationContext) => ASTVisitor;
 export type AstCoalescer = (astMap: AstMap | null) => any;
@@ -30,13 +26,13 @@ export interface LimitedResolveInfo {
   readonly schema: GraphQLSchema;
   readonly operation: DocumentNode;
 }
-export type AuthAction = {
+export interface AuthAction {
   action: string;
   payload: {
     path?: Array<string | number>;
     node?: ArgumentNode;
   };
-};
+}
 
 export function translate(
   params: { [argName: string]: any },
@@ -49,16 +45,16 @@ export function translate(
   const abortObj = Object.freeze({});
   const typeInfo = new TypeInfo(resolveInfo.schema);
 
-  const frags = []
-  for (let defn in resolveInfo.fragments) {
+  const frags = [];
+  for (const defn in resolveInfo.fragments) {
+    if (resolveInfo.fragments.hasOwnProperty(defn)) {
       frags.push(resolveInfo.fragments[defn]);
+    }
   }
   const documentAST: DocumentNode = {
-      kind: 'Document',
-      definitions: [
-          resolveInfo.operation,
-          ...frags
-      ]
+    kind: 'Document',
+    // tslint:disable-next-line: object-literal-sort-keys
+    definitions: [resolveInfo.operation, ...frags],
   };
 
   const queryMap: AstMap = {
@@ -95,17 +91,28 @@ export function translate(
 }
 
 export const coalesce: AstCoalescer = astMap => {
-  const requestAst: ASTNode = astMap ? (astMap['originalQuery'] ? astMap.originalQuery(astMap) : {}) : {};
-  const authFilters: Array<AuthAction> = astMap ? (astMap['authFilters'] ? astMap.authFilters(astMap) : []) : [];
+  const requestAst: ASTNode = astMap ? (astMap.originalQuery ? astMap.originalQuery(astMap) : {}) : {};
+  const authFilters: AuthAction[] = astMap ? (astMap.authFilters ? astMap.authFilters(astMap) : []) : [];
 
   authFilters.map((authAction: AuthAction) => {
     switch (authAction.action) {
       case 'SET':
-        if (authAction.payload.path && authAction.payload.node)
+        if (authAction.payload.path && authAction.payload.node) {
           set(requestAst, authAction.payload.path, authAction.payload.node);
+        }
         break;
+      case 'REPLACE':
+        if (authAction.payload.path && astMap?.[authAction.payload.path.join('.')]) {
+          const nodeFn = astMap[authAction.payload.path.join('.')];
+          const node = nodeFn(astMap);
+          if (node) {
+            set(requestAst, authAction.payload.path, node);
+          }
+        }
       case 'DELETE':
-        if (authAction.payload.path) unset(requestAst, authAction.payload.path);
+        if (authAction.payload.path) {
+          unset(requestAst, authAction.payload.path);
+        }
         break;
       case 'SKIP':
       default:
@@ -125,14 +132,21 @@ export function applyDeepAuth(
   // merge: (oldNode: AstNode, newNode: AstNode) => AstNode,
 ): GraphQLResolveInfo {
   const transformedDocument: DocumentNode = translate(params, ctx, resolveInfo, rules, coalescer);
-  const {operation, fragments} = transformedDocument.definitions.reduce((acc: {operation: OperationDefinitionNode, fragments: { [key: string]: FragmentDefinitionNode }}, defn) => {
-    if (defn.kind == 'OperationDefinition') acc.operation = defn
-    if (defn.kind == 'FragmentDefinition') acc.fragments[defn.name.value] = defn
-    return acc;
-  }, {operation: resolveInfo.operation, fragments: resolveInfo.fragments})
+  const { operation, fragments } = transformedDocument.definitions.reduce(
+    (acc: { operation: OperationDefinitionNode; fragments: { [key: string]: FragmentDefinitionNode } }, defn) => {
+      if (defn.kind === 'OperationDefinition') {
+        acc.operation = defn;
+      }
+      if (defn.kind === 'FragmentDefinition') {
+        acc.fragments[defn.name.value] = defn;
+      }
+      return acc;
+    },
+    { operation: resolveInfo.operation, fragments: resolveInfo.fragments },
+  );
   return {
     ...resolveInfo,
+    fragments,
     operation,
-    fragments
   };
 }

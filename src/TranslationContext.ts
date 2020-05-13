@@ -1,13 +1,12 @@
 import {
+  GraphQLArgument,
+  GraphQLCompositeType,
+  GraphQLDirective,
+  GraphQLField,
+  GraphQLInputType,
+  GraphQLOutputType,
   GraphQLSchema,
   TypeInfo,
-  GraphQLOutputType,
-  GraphQLCompositeType,
-  GraphQLInputType,
-  GraphQLField,
-  GraphQLDirective,
-  GraphQLArgument,
-  ASTNode,
 } from 'graphql';
 import Maybe from 'graphql/tsutils/Maybe';
 import { AstCoalescer, ResolveInfo } from '.';
@@ -17,15 +16,15 @@ import { AstCoalescer, ResolveInfo } from '.';
 // access routinely in TranslationRules.
 
 export class TranslationContext {
-  //protected _ast: ASTNode;
-  protected _storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void;
-  protected _getAstNode: (astMapLoc: string) => AstCoalescer;
-  protected _schema: GraphQLSchema;
-  protected _typeInfo: TypeInfo;
-  protected _reqCtx: any;
-  protected _params: { [argName: string]: any };
-  protected _state: Object;
-  protected _authActions: Array<{ action: string; payload: any }>;
+  // protected _ast: ASTNode;
+  protected storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void;
+  protected getAstNode: (astMapLoc: string) => AstCoalescer;
+  protected schema: GraphQLSchema;
+  protected typeInfo: TypeInfo;
+  protected reqCtx: any;
+  protected params: { [argName: string]: any };
+  protected state: any;
+  protected authActions: Array<{ action: string; payload: any }>;
 
   constructor(
     params: { [argName: string]: any }, // is this needed? or is it already in resolveInfo?
@@ -35,75 +34,75 @@ export class TranslationContext {
     storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void,
     getAstNode: (astMapLoc: string) => AstCoalescer,
   ) {
-    //this._ast = resolveInfo.operation;
-    this._reqCtx = reqCtx;
-    this._schema = resolveInfo.schema;
-    this._typeInfo = typeInfo;
-    this._storeAstNode = storeAstNode;
-    this._getAstNode = getAstNode;
-    this._params = params;
-    this._state = Object.create(null);
-    this._authActions = [];
+    // this._ast = resolveInfo.operation;
+    this.reqCtx = reqCtx;
+    this.schema = resolveInfo.schema;
+    this.typeInfo = typeInfo;
+    this.storeAstNode = storeAstNode;
+    this.getAstNode = getAstNode;
+    this.params = params;
+    this.state = Object.create(null);
+    this.authActions = [];
   }
 
   // accessor and utility methods?
-  addAuthAction(authAction: { action: string; payload: any }): void {
-    this._authActions.push(authAction);
+  public addAuthAction(authAction: { action: string; payload: any }): void {
+    this.authActions.push(authAction);
   }
 
-  getAuthActions(): Array<{ action: string; payload: any }> {
-    return this._authActions;
+  public getAuthActions(): Array<{ action: string; payload: any }> {
+    return this.authActions;
   }
 
-  setState(newState: Object): void {
-    this._state = Object.assign(this._state, newState);
+  public setState(newState: object): void {
+    this.state = Object.assign(this.state, newState);
   }
 
-  currentState(): Readonly<Object> {
-    return this._state;
+  public currentState(): Readonly<any> {
+    return this.state;
   }
 
-  postToAstMap(astMapNode: { loc: string; node: AstCoalescer }): void {
-    this._storeAstNode(astMapNode);
+  public postToAstMap(astMapNode: { loc: string; node: AstCoalescer }): void {
+    this.storeAstNode(astMapNode);
   }
 
-  getFromAstMap(astMapLoc: string): AstCoalescer {
-    return this._getAstNode(astMapLoc);
+  public getFromAstMap(astMapLoc: string): AstCoalescer {
+    return this.getAstNode(astMapLoc);
   }
 
-  getSchema(): GraphQLSchema {
-    return this._schema;
+  public getSchema(): GraphQLSchema {
+    return this.schema;
   }
 
-  getType(): Maybe<GraphQLOutputType> {
-    return this._typeInfo.getType();
+  public getType(): Maybe<GraphQLOutputType> {
+    return this.typeInfo.getType();
   }
 
-  getParentType(): Maybe<GraphQLCompositeType> {
-    return this._typeInfo.getParentType();
+  public getParentType(): Maybe<GraphQLCompositeType> {
+    return this.typeInfo.getParentType();
   }
 
-  getInputType(): Maybe<GraphQLInputType> {
-    return this._typeInfo.getInputType();
+  public getInputType(): Maybe<GraphQLInputType> {
+    return this.typeInfo.getInputType();
   }
 
-  getParentInputType(): Maybe<GraphQLInputType> {
-    return this._typeInfo.getParentInputType();
+  public getParentInputType(): Maybe<GraphQLInputType> {
+    return this.typeInfo.getParentInputType();
   }
 
-  getFieldDef(): Maybe<GraphQLField<any, any>> {
-    return this._typeInfo.getFieldDef();
+  public getFieldDef(): Maybe<GraphQLField<any, any>> {
+    return this.typeInfo.getFieldDef();
   }
 
-  getDirective(): Maybe<GraphQLDirective> {
-    return this._typeInfo.getDirective();
+  public getDirective(): Maybe<GraphQLDirective> {
+    return this.typeInfo.getDirective();
   }
 
-  getArgument(): Maybe<GraphQLArgument> {
-    return this._typeInfo.getArgument();
+  public getArgument(): Maybe<GraphQLArgument> {
+    return this.typeInfo.getArgument();
   }
 
-  fromRequestContext(arg: string) {
-    return this._reqCtx[arg];
+  public fromRequestContext(arg: string) {
+    return this.reqCtx[arg];
   }
 }

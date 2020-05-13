@@ -1,5 +1,5 @@
-import { graphql, GraphQLResolveInfo, DocumentNode, NameNode } from 'graphql';
-import { makeExecutableSchema } from 'graphql-tools';
+import { DocumentNode, graphql, GraphQLResolveInfo, NameNode, printSchema } from 'graphql';
+import { makeExecutableSchema, mergeSchemas } from 'graphql-tools';
 import { translate } from '../src'
 
 describe('ResolveInfo Fragments', () =>{
@@ -33,7 +33,8 @@ describe('ResolveInfo Fragments', () =>{
         const resolvers = {
             Query: {
                 tasks: (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-                    const testTranslate = translate(args, ctx, resolveInfo);
+                    const testTranslate = translate(args, ctx, {...resolveInfo, schema});
+                    // tslint:disable-next-line: no-console
                     console.log(testTranslate.definitions[0].selectionSet.selections[0].arguments[0].value.fields[0].value.fields[0]);
                     expect(testTranslate).toHaveProperty(['definitions', 0, 'selectionSet', 'selections', 0, 'arguments', 0]);
                     expect(testTranslate.definitions[0].selectionSet.selections[0].arguments[0])
@@ -46,6 +47,7 @@ describe('ResolveInfo Fragments', () =>{
                                 }),
                                 value: expect.objectContaining({
                                     kind: 'ObjectValue',
+                                    // tslint:disable-next-line: object-literal-sort-keys
                                     fields: expect.arrayContaining([
                                         expect.objectContaining({
                                             kind: 'ObjectField',
@@ -55,6 +57,7 @@ describe('ResolveInfo Fragments', () =>{
                                             }),
                                             value: expect.objectContaining({
                                                 kind: 'ObjectValue',
+                                                // tslint:disable-next-line: object-literal-sort-keys
                                                 fields: expect.arrayContaining([
                                                     expect.objectContaining({
                                                         kind: 'ObjectField',
@@ -88,8 +91,8 @@ describe('ResolveInfo Fragments', () =>{
             }
         }
         const schema = makeExecutableSchema({
+            resolvers,
             typeDefs: sdl,
-            resolvers
         });
 
         const queryA = `
@@ -101,10 +104,13 @@ describe('ResolveInfo Fragments', () =>{
         }
         `;
         return graphql(schema, queryA, null, {
+            deepAuthSchema: schema,
+            // tslint:disable-next-line: object-literal-sort-keys
             deepAuthParams: {
                 $user_id: 'Groot'
             }
         }).then( (response) => {
+            // tslint:disable-next-line: no-console
             console.log(response);
             expect(response).toEqual(
                 expect.objectContaining({
