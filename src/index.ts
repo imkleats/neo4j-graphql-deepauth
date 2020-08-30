@@ -150,3 +150,5 @@ export function applyDeepAuth(
     operation,
   };
 }
+
+export { validateDeepAuthSchema, getDeepAuthFromType, coerceDeepAuthInputValue } from './Utilities';
