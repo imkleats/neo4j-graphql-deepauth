@@ -48,6 +48,7 @@ export default function AuthorizationFilterRule(
         // Currently does not support Interface or Union types.
         // Check for ObjectTypes that can have @deepAuth directive.
         const filterInputType = isObjectType(innerType)
+          // @ts-ignore
           ? context.getSchema().getType(`_${innerType.name}Filter`)
           : undefined;
         const authFilter = isObjectType(innerType) ? getDeepAuthFromType(innerType, context) : undefined;
