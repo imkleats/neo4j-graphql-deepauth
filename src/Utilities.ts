@@ -26,7 +26,7 @@ export function validateDeepAuthSchema(schema: GraphQLSchema) {
         directive.arguments
           ?.filter(arg => arg.name.value === 'path')
           ?.map(pathNode => {
-            const path = pathNode.value?.kind === 'StringValue' ? `{ ${pathNode.value.value} }` : '';
+            const path = pathNode.value?.kind === 'StringValue' ? `${pathNode.value.value}` : '';
             const filterInputType = schema.getType(filterInputTypeName);
             if (isInputType(filterInputType)) {
               coerceInputValue(valueFromASTUntyped(parseValue(path)), filterInputType);
