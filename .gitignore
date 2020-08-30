@@ -1,6 +1,5 @@
 node_modules/*
 coverage/*
 scripts/*
-lib/*
 .vscode/*
 yarn.lock

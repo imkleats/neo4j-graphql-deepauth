@@ -1,6 +1,6 @@
-import { DocumentNode, graphql, GraphQLResolveInfo, NameNode, printSchema } from 'graphql';
-import { makeExecutableSchema, mergeSchemas } from 'graphql-tools';
-import { applyDeepAuth, translate } from '../src'
+import { graphql, GraphQLResolveInfo, NameNode } from 'graphql';
+import { makeExecutableSchema } from 'graphql-tools';
+import { translate } from '../src'
 
 describe('ResolveInfo Fragments', () => {
     const sdl = `
@@ -39,7 +39,6 @@ describe('ResolveInfo Fragments', () => {
             variables: [String]
         ) on OBJECT | FIELD_DEFINITION
     `;
-
     test('should return a non-error graphql response', () => {
         
         const resolvers = {
