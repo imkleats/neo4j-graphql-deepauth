@@ -8,7 +8,7 @@ import {
   GraphQLSchema,
   TypeInfo,
 } from 'graphql';
-import Maybe from 'graphql/tsutils/Maybe';
+import { Maybe }from 'graphql/jsutils/Maybe';
 import { AstCoalescer, ResolveInfo } from '.';
 
 // Modeling after graphql-js ValidationContext
@@ -24,7 +24,7 @@ export class TranslationContext {
   protected reqCtx: any;
   protected params: { [argName: string]: any };
   protected state: any;
-  protected authActions: Array<{ action: string; payload: any }>;
+  protected authActions: { action: string; payload: any }[];
 
   constructor(
     params: { [argName: string]: any }, // is this needed? or is it already in resolveInfo?
@@ -50,7 +50,7 @@ export class TranslationContext {
     this.authActions.push(authAction);
   }
 
-  public getAuthActions(): Array<{ action: string; payload: any }> {
+  public getAuthActions(): { action: string; payload: any }[] {
     return this.authActions;
   }
 

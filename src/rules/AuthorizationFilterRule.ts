@@ -1,17 +1,16 @@
 // import GraphQL type definitions
 import {
   ArgumentNode,
-  ASTNode,
+  astFromValue,
   ASTVisitor,
-  DirectiveNode,
   FieldNode,
   getNamedType,
+  isInputType,
   isObjectType,
-  ListValueNode,
-  parse,
-  StringValueNode,
+  valueFromASTUntyped,
 } from 'graphql';
 import { TranslationContext } from '../TranslationContext';
+import { coerceDeepAuthInputValue, getDeepAuthFromType } from '../Utilities';
 
 export default function AuthorizationFilterRule(
   context: TranslationContext, // The TranslationContext class we instantiate in translate().
@@ -44,117 +43,63 @@ export default function AuthorizationFilterRule(
         path: ReadonlyArray<string | number>,
         ancestors: any,
       ) {
-        function populateArgsInPath(myPath: string, args: string[]): string {
-          const ctxParams = context.fromRequestContext('deepAuthParams');
-          const populatedPath = args?.reduce((acc: string, param: string) => {
-            return acc.replace(param, ctxParams[param]);
-          }, myPath);
-          return populatedPath;
-        }
-
-        function parseAuthFilter(query: string): ArgumentNode | undefined {
-          const ast = parse(`{ q(filter: {${query}}) }`);
-          // Filter arguments will be at the following address:
-          // [ 'definitions', 0, 'selectionSet', 'selections', 0, 'arguments', 0 ]
-          let filterArg;
-          if (
-            ast.definitions[0].kind === 'OperationDefinition' &&
-            ast.definitions[0].selectionSet.selections[0].kind === 'Field' &&
-            ast.definitions[0].selectionSet.selections[0].arguments
-          ) {
-            filterArg = ast.definitions[0].selectionSet.selections[0].arguments[0];
-          }
-          // If query is a blank string, it will return an ObjectValue with fields: [].
-          // return undefined if [], else return filterArg
-          return filterArg
-            ? filterArg.value.kind === 'ObjectValue' && filterArg.value.fields.length > 0
-              ? filterArg
-              : undefined
-            : filterArg;
-        }
-
         const fieldType = context.getType();
         const innerType = fieldType ? getNamedType(fieldType) : undefined;
-
-        let authFilter;
-
         // Currently does not support Interface or Union types.
         // Check for ObjectTypes that can have @deepAuth directive.
-        if (isObjectType(innerType)) {
-          const typeDirectives = innerType.astNode ? innerType.astNode.directives : undefined;
-          const authDirective = typeDirectives
-            ? typeDirectives.filter((directive: DirectiveNode) => directive.name.value === 'deepAuth')
-            : undefined;
-          const authArgs = authDirective && authDirective.length > 0 ? authDirective[0].arguments : undefined;
-          const authConfig = authArgs
-            ? authArgs.reduce((acc: any, arg) => {
-                switch (arg.name.value) {
-                  case 'path':
-                    if (arg.value.kind === 'StringValue') {
-                      acc.path = arg.value.value;
-                    }
-                    break;
-                  case 'variables':
-                    const authVariables: string[] = [];
-                    if (arg.value.kind === 'ListValue') {
-                      arg.value.values.map(varArg => {
-                        if (varArg.kind === 'StringValue') {
-                          authVariables.push(varArg.value);
-                        }
-                      });
-                      acc.variables = authVariables;
-                    }
-                    break;
-                }
-                return acc;
-              }, {})
-            : undefined;
+        const filterInputType = isObjectType(innerType)
+          // @ts-ignore
+          ? context.getSchema().getType(`_${innerType.name}Filter`)
+          : undefined;
+        const authFilter = isObjectType(innerType) ? getDeepAuthFromType(innerType, context) : undefined;
 
-          const authQuery = authConfig ? populateArgsInPath(authConfig.path, authConfig.variables) : undefined;
-          if (authQuery) {
-            authFilter = parseAuthFilter(authQuery);
-          }
-        }
-
+        // Get user-submitted Filter argument & index of that argument in the Field's Arguments array
         const [existingFilter, argIndex] = node.arguments
-          ? node.arguments.reduce(
-              (
-                [filterArg, argumentIndex]: Array<ArgumentNode | undefined | number>,
-                argNode: ArgumentNode,
-                argIdx: number,
-              ) => {
-                if (filterArg === undefined) {
+          ? node.arguments.reduce<[ArgumentNode | undefined, number]>(
+              (accTuple: [ArgumentNode | undefined, number], argNode: ArgumentNode, argIdx: number) => {
+                if (accTuple?.[0] === undefined) {
                   // Until a filterArgument is found...
                   if (argNode.name.value === 'filter') {
                     //  Check if argument.value.name is filter
-                    return [argNode, argIdx]; //  return the argumentNode if it is, and the actual index.
+                    return [argNode as ArgumentNode, argIdx]; //  return the argumentNode if it is, and the actual index.
                   } else {
                     //  Else (argument is not filter && filter has not yet been found)
-                    return [filterArg, argIdx + 1]; //  Keep undefined node, and set Index at idx+1 in case filter never found.
+                    return [undefined, argIdx + 1]; //  Keep undefined node, and set Index at idx+1 in case filter never found.
                   }
                 }
-                return [filterArg, argumentIndex]; // If filter has already been found, return the accumulator.
+                return [undefined, accTuple?.[1]]; // If filter has already been found, return the accumulator.
               },
               [undefined, 0],
             )
           : [undefined, 0];
 
         let authAction;
-        if (authFilter) {
+        if (existingFilter && filterInputType && isInputType(filterInputType)) {
           authAction = {
+            // At this point, appropriate action is SET. If other directives need to
+            // modify the pre-exisiting Filter argument through a TranslationRule,
+            // it might be necessary to use a REPLACE action, which has different behavior
+            // to accommodate non-colocated translations.
             action: 'SET',
             payload: {
-              node: authFilter,
+              node: {
+                kind: 'Argument',
+                name: { kind: 'Name', value: 'filter' },
+                // `value` must be type ValueNode.
+                value: astFromValue(
+                  coerceDeepAuthInputValue(valueFromASTUntyped(existingFilter.value), filterInputType, context),
+                  filterInputType,
+                ),
+              },
               path: [...path, 'arguments', argIndex],
             },
           };
         } else {
-          // Until nested filter transformations can be implemented,
-          // this will submit an action to delete the filter Argument.
-          authAction = existingFilter
+          authAction = authFilter
             ? {
-                action: 'DELETE',
+                action: 'SET',
                 payload: {
+                  node: { kind: 'Argument', name: { kind: 'Name', value: 'filter' }, value: authFilter },
                   path: [...path, 'arguments', argIndex],
                 },
               }
@@ -168,52 +113,11 @@ export default function AuthorizationFilterRule(
         // In most cases, we just want to return undefined.
       },
 
-      // To deal with nested filters, we can also leverage the native
-      // recursion of `visit()`. This would potentially use visitors
-      // for `Argument`, `ListValue`, `ObjectValue`, and `ObjectField`.
-      Argument(
-        node: ASTNode,
-        key: string | number | undefined,
-        parent: any,
-        path: ReadonlyArray<string | number>,
-        ancestors: any,
-      ) {
-        // TODO: Create a TypeInfo-like class for
-        // tracking Argument details
-      },
-      ObjectField(
-        node: ASTNode,
-        key: string | number | undefined,
-        parent: any,
-        path: ReadonlyArray<string | number>,
-        ancestors: any,
-      ) {
-        const ToDoList = `
-          1) Check if child of 'filter' Argument.
-              how: Use TypeInfo
-              yes? Proceed to 2
-              no?  return undefined (to proceed with visitation)
-          2) Return undefined if node.name.value is a logical operator (AND, OR).
-          3) Process 'node.name.value' to be able to get TypeInfo for the filter
-              argument component.
-          4) If (3) indicates type is subject to @deepAuth, wrap the ObjectField
-              with the relevant root authorization filter for that type using AND.
-        `;
-        // TypeInfo contains both:
-        // a) Argument details
-        // b) InputType
-      },
-    },
-    leave: {
-      Argument(
-        node: ASTNode,
-        key: string | number | undefined,
-        parent: any,
-        path: ReadonlyArray<string | number>,
-        ancestors: any,
-      ) {
-        // Invoke FilterInfo.leave()
-      },
+      // To deal with nested relationship filters, we moved to applying
+      // the directive through `coerceDeepAuthInputValue`, modeled from
+      // the reference implementation's `coerceInputValue` function.
+      // FYI: This function could be generalized to apply directive-based
+      // changes to any other kind of GraphQLInputValue too.
     },
   };
 }

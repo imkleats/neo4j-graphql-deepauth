@@ -1,8 +1,8 @@
 {
-  "name": "neo4j-graphql-deepauth",
-  "version": "0.1.0-alpha",
+  "name": "neo4j-deepauth",
+  "version": "0.1.0",
   "description": "Directive-based authorization for neo4j-graphql-js GraphQL endpoints",
-  "main": "index.ts",
+  "main": "lib/index.js",
   "scripts": {
     "test": "jest",
     "build": "tsc",
@@ -24,17 +24,17 @@
   },
   "homepage": "https://github.com/imkleats/neo4j-graphql-deepauth#readme",
   "dependencies": {
-    "@types/lodash": "^4.14.149",
-    "graphql": "^14.5.8",
-    "lodash": "^4.17.19"
+    "@types/lodash": "^4.14.161",
+    "graphql": "^15.3.0",
+    "lodash": "^4.17.20"
   },
   "devDependencies": {
-    "@types/jest": "^24.0.25",
-    "graphql-tools": "^4.0.6",
-    "jest": "^24.9.0",
-    "ts-jest": "^24.2.0",
-    "tslint": "^5.20.1",
+    "@types/jest": "^26.0.10",
+    "graphql-tools": "^6.1.0",
+    "jest": "^26.4.2",
+    "ts-jest": "^26.3.0",
+    "tslint": "^6.1.3",
     "tslint-config-prettier": "^1.18.0",
-    "typescript": "^3.8"
+    "typescript": "^4.0.2"
   }
 }
