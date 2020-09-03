@@ -6,11 +6,17 @@ import {
   FieldNode,
   getNamedType,
   isInputType,
+  isInterfaceType,
   isObjectType,
   valueFromASTUntyped,
 } from 'graphql';
 import { TranslationContext } from '../TranslationContext';
-import { coerceDeepAuthInputValue, getDeepAuthFromType } from '../Utilities';
+import {
+  coerceDeepAuthInputValue,
+  getDeepAuthFromInterfaceType,
+  getDeepAuthFromType,
+  getExistingFilter,
+} from '../Utilities';
 
 export default function AuthorizationFilterRule(
   context: TranslationContext, // The TranslationContext class we instantiate in translate().
@@ -47,34 +53,18 @@ export default function AuthorizationFilterRule(
         const innerType = fieldType ? getNamedType(fieldType) : undefined;
         // Currently does not support Interface or Union types.
         // Check for ObjectTypes that can have @deepAuth directive.
-        const filterInputType = isObjectType(innerType)
-          // @ts-ignore
-          ? context.getSchema().getType(`_${innerType.name}Filter`)
+        const filterInputType = context.getSchema().getType(`_${innerType?.name}Filter`);
+        const authFilter = isObjectType(innerType)
+          ? getDeepAuthFromType(innerType, context)
+          : isInterfaceType(innerType)
+          ? getDeepAuthFromInterfaceType(innerType, context)
           : undefined;
-        const authFilter = isObjectType(innerType) ? getDeepAuthFromType(innerType, context) : undefined;
 
         // Get user-submitted Filter argument & index of that argument in the Field's Arguments array
-        const [existingFilter, argIndex] = node.arguments
-          ? node.arguments.reduce<[ArgumentNode | undefined, number]>(
-              (accTuple: [ArgumentNode | undefined, number], argNode: ArgumentNode, argIdx: number) => {
-                if (accTuple?.[0] === undefined) {
-                  // Until a filterArgument is found...
-                  if (argNode.name.value === 'filter') {
-                    //  Check if argument.value.name is filter
-                    return [argNode as ArgumentNode, argIdx]; //  return the argumentNode if it is, and the actual index.
-                  } else {
-                    //  Else (argument is not filter && filter has not yet been found)
-                    return [undefined, argIdx + 1]; //  Keep undefined node, and set Index at idx+1 in case filter never found.
-                  }
-                }
-                return [undefined, accTuple?.[1]]; // If filter has already been found, return the accumulator.
-              },
-              [undefined, 0],
-            )
-          : [undefined, 0];
+        const [existingFilter, argIndex] = getExistingFilter(node) ?? [undefined, 0];
 
         let authAction;
-        if (existingFilter && filterInputType && isInputType(filterInputType)) {
+        if (existingFilter && isInputType(filterInputType)) {
           authAction = {
             // At this point, appropriate action is SET. If other directives need to
             // modify the pre-exisiting Filter argument through a TranslationRule,

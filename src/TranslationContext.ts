@@ -8,7 +8,7 @@ import {
   GraphQLSchema,
   TypeInfo,
 } from 'graphql';
-import { Maybe }from 'graphql/jsutils/Maybe';
+import { Maybe } from 'graphql/jsutils/Maybe';
 import { AstCoalescer, ResolveInfo } from '.';
 
 // Modeling after graphql-js ValidationContext
