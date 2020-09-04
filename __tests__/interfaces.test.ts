@@ -19,7 +19,8 @@ import {
   QueryWithFilteredNestedObject,
   QueryWithNestedFilterObject,
   NestedObjectResponse,
-  QueryWithNestedFilterArgumentNode, QueryWithFilterParams, BasicExistingFilterParam, NestedFilterObjectArgumentParam, QueryWithNestedFilterArgumentParams
+  QueryWithNestedFilterArgumentNode, QueryWithFilterParams, BasicExistingFilterParam, NestedFilterObjectArgumentParam, QueryWithNestedFilterArgumentParams, QueryWithNestedFragmentObject,
+  QueryWithFilteredNestedFragmentObject, NestedObjectFragmentResponse
 } from './helpers/interfacesHelper';
 
 describe('Applying deepAuth through Extensions and Interfaces', () => {
@@ -95,6 +96,32 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
+    test('adds the auth filter argument on a nested selection in a fragment', () => {
+      const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
+        expect(args.filter).toBeUndefined();
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
+        // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
+        expect(authParams.filter).toBeUndefined();
+        expect(testTranslate).toHaveProperty(
+          ['fragments', 'taskDetails', 'selectionSet', 'selections', 0, 'arguments', 0],
+          BasicFilterArgumentNode,
+        );
+        // @ts-ignore
+        // tslint:disable-next-line: no-console
+        // console.log(JSON.stringify(testTranslate?.operation?.selectionSet?.selections?.[0]?.arguments?.[0], null, 2));
+      };
+
+      return runTestThroughResolver(
+        ExtensionTypeDefs,
+        QueryWithNestedFragmentObject,
+        BasicContext,
+        'User',
+        NestedObjectResponse,
+        testFn,
+      ).then(response => {
+        expect(response).toEqual(NestedObjectResponse);
+      });
+    });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
         const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
@@ -143,6 +170,32 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         testFn,
       ).then(response => {
         expect(response).toEqual(NestedObjectResponse);
+      });
+    });
+    test('nests the auth filter onto a nested filter on non-authed root selection in a fragment', () => {
+      const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
+        expect(args.filter).toBeUndefined();
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
+        // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
+        expect(authParams.filter).toBeUndefined();
+        expect(testTranslate).toHaveProperty(
+          ['fragments', 'userDetails', 'selectionSet', 'selections', 0, 'arguments', 0],
+          QueryWithNestedFilterArgumentNode,
+        );
+        // @ts-ignore
+        // tslint:disable-next-line: no-console
+        // console.log(JSON.stringify(testTranslate?.operation?.selectionSet?.selections?.[0]?.arguments?.[0], null, 2));
+      };
+
+      return runTestThroughResolver(
+        ExtensionTypeDefs,
+        QueryWithFilteredNestedFragmentObject,
+        BasicContext,
+        'User',
+        NestedObjectFragmentResponse,
+        testFn,
+      ).then(response => {
+        expect(response).toEqual(NestedObjectFragmentResponse);
       });
     });
   });
