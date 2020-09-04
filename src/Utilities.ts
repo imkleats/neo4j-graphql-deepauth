@@ -1,18 +1,27 @@
 import {
+  ArgumentNode,
   coerceInputValue,
+  DirectiveNode,
+  FieldNode,
   GraphQLInputType,
-  GraphQLNamedType,
+  GraphQLInterfaceType,
+  GraphQLObjectType,
   GraphQLSchema,
+  InterfaceTypeExtensionNode,
   isInputObjectType,
   isInputType,
+  isInterfaceType,
   isLeafType,
   isListType,
   isNonNullType,
   isObjectType,
+  ObjectTypeDefinitionNode,
+  ObjectTypeExtensionNode,
   parseValue,
   valueFromAST,
   valueFromASTUntyped,
 } from 'graphql';
+import { Maybe } from 'graphql/jsutils/Maybe';
 import { TranslationContext } from './TranslationContext';
 
 export function validateDeepAuthSchema(schema: GraphQLSchema) {
@@ -31,7 +40,7 @@ export function validateDeepAuthSchema(schema: GraphQLSchema) {
             if (isInputType(filterInputType)) {
               coerceInputValue(valueFromASTUntyped(parseValue(path)), filterInputType);
             }
-          })
+          }),
       );
   }
 }
@@ -101,7 +110,12 @@ function coerceDeepAuthInputValueImpl(inputValue: any, type: GraphQLInputType, c
 
     if (isFilterInput(type.name)) {
       const filteredType = context.getSchema().getType(getTypeNameFromFilterName(type.name));
-      const deepAuthFilter = filteredType ? getDeepAuthFromType(filteredType, context) : null;
+      const deepAuthFilter =
+        filteredType && isObjectType(filteredType)
+          ? getDeepAuthFromType(filteredType, context)
+          : isInterfaceType(filteredType)
+          ? getDeepAuthFromInterfaceType(filteredType, context)
+          : undefined;
       if (deepAuthFilter) {
         coercedValue = { AND: [valueFromAST(deepAuthFilter, type), coercedValue] };
       }
@@ -145,42 +159,90 @@ function getTypeNameFromFilterName(filterName: string): string {
   return filterName.slice(1, filterName.length - 6);
 }
 
-export function getDeepAuthFromType(type: GraphQLNamedType, context: TranslationContext) {
-  // Currently does not support Interface or Union types.
-  // Check for ObjectTypes that can have @deepAuth directive.
-  if (isObjectType(type)) {
-    const authConfig = type?.astNode?.directives
-      ?.filter(directive => directive.name.value === 'deepAuth')?.[0]
-      ?.arguments?.reduce((acc: any, arg) => {
-        switch (arg.name.value) {
-          case 'path':
-            if (arg.value.kind === 'StringValue') {
-              acc.path = arg.value.value;
-            }
-            break;
-          case 'variables':
-            const authVariables: string[] = [];
-            if (arg.value.kind === 'ListValue') {
-              arg.value.values.map(varArg => {
-                if (varArg.kind === 'StringValue') {
-                  authVariables.push(varArg.value);
-                }
-              });
-              acc.variables = authVariables;
-            }
-            break;
-        }
-        return acc;
-      }, {});
+interface DeepAuthConfig {
+  path: string;
+  variables: string[];
+}
+export function getDeepAuthFromType(type: GraphQLObjectType, context: TranslationContext) {
+  // Currently does not support Union types.
+  // Check for presence of @deepAuth directive with following precedence:
+  // 1) typeDef extension; 2) original typeDef; 3) Interface
+  const authConfig =
+    getDeepAuthFromTypeExtensionAst(type.extensionASTNodes) ??
+    getDeepAuthFromTypeAst(type.astNode) ??
+    getDeepAuthFromInterfaces(type.getInterfaces());
+  return authConfig
+    ? parseValue(
+        populateArgsInPath(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams')),
+      )
+    : undefined;
+}
 
-    return authConfig
-      ? parseValue(
-          populateArgsInPath(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams')),
-        )
-      : undefined;
-  } else {
-    return undefined;
+export function getDeepAuthFromInterfaceType(type: GraphQLInterfaceType, context: TranslationContext) {
+  // Currently does not support Union types.
+  // Check for presence of @deepAuth directive with following precedence:
+  // 1) typeDef extension; 2) original typeDef; 3) Interface
+  const authConfig = getDeepAuthFromInterfaces([type]);
+  return authConfig
+    ? parseValue(
+        populateArgsInPath(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams')),
+      )
+    : undefined;
+}
+
+function deepAuthArgumentReducer(acc: DeepAuthConfig, arg: ArgumentNode) {
+  switch (arg.name.value) {
+    case 'path':
+      if (arg.value.kind === 'StringValue') {
+        acc.path = arg.value.value;
+      }
+      break;
+    case 'variables':
+      const authVariables: string[] = [];
+      if (arg.value.kind === 'ListValue') {
+        arg.value.values.map(varArg => {
+          if (varArg.kind === 'StringValue') {
+            authVariables.push(varArg.value);
+          }
+        });
+        acc.variables = authVariables;
+      }
+      break;
   }
+  return acc;
+}
+
+type findDirectiveFn = (x: string) => (y: DirectiveNode) => boolean;
+const findDirective: findDirectiveFn = (name: string) => (directive: DirectiveNode) => directive.name.value === name;
+const findExtensionWithDirective = (name: string, filterFn: findDirectiveFn) => (
+  extension: ObjectTypeExtensionNode | InterfaceTypeExtensionNode,
+) => extension?.directives?.find(filterFn(name));
+
+export function getDeepAuthFromTypeAst(typeDef: Maybe<ObjectTypeDefinitionNode> | Maybe<InterfaceTypeExtensionNode>) {
+  return typeDef?.directives
+    ?.find(findDirective('deepAuth'))
+    ?.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [] });
+}
+
+export function getDeepAuthFromInterfaces(interfaces: GraphQLInterfaceType[]) {
+  return (
+    interfaces
+      ?.find(inter => inter?.astNode?.directives?.find(findDirective('deepAuth')))
+      ?.astNode?.directives?.find(findDirective('deepAuth'))
+      ?.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [] }) ??
+    interfaces
+      ?.find(inter => inter?.extensionASTNodes?.find(findExtensionWithDirective('deepAuth', findDirective)))
+      ?.extensionASTNodes?.find(findExtensionWithDirective('deepAuth', findDirective))
+      ?.directives?.find(findDirective('deepAuth'))
+      ?.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [] })
+  );
+}
+
+export function getDeepAuthFromTypeExtensionAst(extensions: Maybe<readonly ObjectTypeExtensionNode[]>) {
+  return extensions
+    ?.find(findExtensionWithDirective('deepAuth', findDirective))
+    ?.directives?.find(findDirective('deepAuth'))
+    ?.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [] });
 }
 
 function populateArgsInPath(myPath: string, args: string[], ctxParams: any): string {
@@ -188,4 +250,22 @@ function populateArgsInPath(myPath: string, args: string[], ctxParams: any): str
     return acc.replace(param, ctxParams[param]);
   }, myPath);
   return populatedPath;
+}
+export function getExistingFilter(fieldNode: FieldNode) {
+  return fieldNode.arguments?.reduce<[ArgumentNode | undefined, number]>(
+    (accTuple: [ArgumentNode | undefined, number], argNode: ArgumentNode, argIdx: number) => {
+      if (accTuple?.[0] === undefined) {
+        // Until a filterArgument is found...
+        if (argNode.name.value === 'filter') {
+          //  Check if argument.value.name is filter
+          return [argNode as ArgumentNode, argIdx]; //  return the argumentNode if it is, and the actual index.
+        } else {
+          //  Else (argument is not filter && filter has not yet been found)
+          return [undefined, argIdx + 1]; //  Keep undefined node, and set Index at idx+1 in case filter never found.
+        }
+      }
+      return [undefined, accTuple?.[1]]; // If filter has already been found, return the accumulator.
+    },
+    [undefined, 0],
+  );
 }
