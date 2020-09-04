@@ -131,32 +131,35 @@ export function applyDeepAuth(
   rules: TranslationRule[] = [AuthorizationFilterRule], // default to specifiedRules? what to include?
   coalescer: AstCoalescer = coalesce,
   // merge: (oldNode: AstNode, newNode: AstNode) => AstNode,
-): GraphQLResolveInfo {
+): { authParams: {[key:string]: any} ; authResolveInfo: GraphQLResolveInfo } {
   const transformedDocument: DocumentNode = translate(params, ctx, resolveInfo, rules, coalescer);
-  const { operation, fragments } = transformedDocument.definitions.reduce(
-    (acc: { operation: OperationDefinitionNode; fragments: { [key: string]: FragmentDefinitionNode } }, defn) => {
+  const { operation, fragments, authParams } = transformedDocument.definitions.reduce(
+    (acc: { operation: OperationDefinitionNode; fragments: { [key: string]: FragmentDefinitionNode }; authParams: {[key:string]: any} }, defn) => {
       if (defn.kind === 'OperationDefinition') {
         acc.operation = defn;
+        acc.authParams = {...acc.authParams, filter: applyDeepAuthToParams(defn)};
       }
       if (defn.kind === 'FragmentDefinition') {
         acc.fragments[defn.name.value] = defn;
       }
       return acc;
     },
-    { operation: resolveInfo.operation, fragments: resolveInfo.fragments },
+    { operation: resolveInfo.operation, fragments: resolveInfo.fragments, authParams: params },
   );
   return {
+    authParams,
+    authResolveInfo: {
     ...resolveInfo,
     fragments,
     operation,
-  };
+  }};
 }
 
-export function applyDeepAuthToParams(resolveInfo: GraphQLResolveInfo) {
+function applyDeepAuthToParams(operationDefinition: OperationDefinitionNode) {
   // neo4j-graphql-js takes filter from params on top level, not from resolveInfo
   // need to account for this
-  return resolveInfo?.operation?.selectionSet?.selections?.[0]?.kind === "Field" &&
-    resolveInfo.operation.selectionSet.selections[0].arguments?.filter(arg => arg.name.value === 'filter')?.map( arg => {
+  return operationDefinition?.selectionSet?.selections?.[0]?.kind === "Field" &&
+    operationDefinition.selectionSet.selections[0].arguments?.filter(arg => arg.name.value === 'filter')?.map( arg => {
       return valueFromASTUntyped(arg.value);
     })[0];
 }

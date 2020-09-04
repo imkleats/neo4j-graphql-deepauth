@@ -12,21 +12,23 @@ import {
   InterfaceTypeDefs,
   InterfaceExtensionTypeDefs,
   BasicFilterArgumentNode,
+  BasicAuthFilterParam,
   QueryWithFilter,
   QueryWithFilterArgumentNode,
   QueryWithNestedObject,
   QueryWithFilteredNestedObject,
   QueryWithNestedFilterObject,
   NestedObjectResponse,
-  QueryWithNestedFilterArgumentNode,
+  QueryWithNestedFilterArgumentNode, QueryWithFilterParams, BasicExistingFilterParam, NestedFilterObjectArgumentParam, QueryWithNestedFilterArgumentParams
 } from './helpers/interfacesHelper';
 
 describe('Applying deepAuth through Extensions and Interfaces', () => {
   describe('deepAuth applied through Extensions', () => {
     test('adds the auth filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
-        // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
+        expect(args.filter).toBeUndefined();
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
+        expect(authParams).toHaveProperty('filter', BasicAuthFilterParam);
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
           BasicFilterArgumentNode,
@@ -44,8 +46,9 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
-        // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
+        expect(args).toHaveProperty('filter', BasicExistingFilterParam);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
+        expect(authParams).toHaveProperty('filter', QueryWithFilterParams);
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
           QueryWithFilterArgumentNode,
@@ -68,8 +71,10 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('adds the auth filter argument on a nested selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        expect(args.filter).toBeUndefined();
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
+        expect(authParams.filter).toBeUndefined();
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
           BasicFilterArgumentNode,
@@ -92,7 +97,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
@@ -116,7 +121,9 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests the auth filter onto a nested filter on non-authed root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        expect(args).toHaveProperty('filter', NestedFilterObjectArgumentParam);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
+        expect(authParams).toHaveProperty('filter', QueryWithNestedFilterArgumentParams);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         // @ts-ignore
         // tslint:disable-next-line: no-console
@@ -142,7 +149,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
   describe('deepAuth applied through interface application', () => {
     test('adds the auth filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
@@ -161,7 +168,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
@@ -185,7 +192,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('adds the auth filter argument on a nested selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
@@ -209,7 +216,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
@@ -233,7 +240,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests the auth filter onto a nested filter on non-authed root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         // @ts-ignore
         // tslint:disable-next-line: no-console
@@ -259,7 +266,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
   describe('deepAuth applied through extension of previously applied interfaces', () => {
     test('adds the auth filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
@@ -283,7 +290,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
@@ -307,7 +314,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('adds the auth filter argument on a nested selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
@@ -331,7 +338,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
@@ -355,7 +362,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
     });
     test('nests the auth filter onto a nested filter on non-authed root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
-        const testTranslate = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams, authResolveInfo: testTranslate} = applyDeepAuth(args, ctx, resolveInfo);
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         // @ts-ignore
         // tslint:disable-next-line: no-console
