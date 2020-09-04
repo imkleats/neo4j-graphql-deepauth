@@ -139,6 +139,21 @@ query {
 }
 `;
 
+export const QueryWithNestedFragmentObject = `
+query {
+    User {
+        name
+        ...taskDetails
+    }
+}
+fragment taskDetails on User {
+  tasks {
+    name
+    order
+  }
+}
+`;
+
 export const NestedObjectResponse = {
   data: {
     User: [
@@ -152,6 +167,32 @@ export const NestedObjectResponse = {
           {
             name: 'More Tests',
             order: [4, 5, 6, 7],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+export const NestedObjectFragmentResponse = {
+  data: {
+    User: [
+      {
+        name: 'Freddy Mercury',
+        tasks: [
+          {
+            name: 'Build Tests',
+            order: [0, 1, 2, 3],
+            visibleTo: [
+              {name: 'Brian May'}
+            ]
+          },
+          {
+            name: 'More Tests',
+            order: [4, 5, 6, 7],
+            visibleTo: [
+              {name: 'Roger Taylor'}
+            ]
           },
         ],
       },
@@ -180,6 +221,24 @@ export const QueryWithNestedFilterObject = `
               order
           }
       }
+  }
+  `;
+
+export const QueryWithFilteredNestedFragmentObject = `
+  query {
+      User {
+          name
+          tasks {
+              name
+              order
+              ...userDetails
+          }
+      }
+  }
+  fragment userDetails on Task {
+    visibleTo(filter: { tasks_some: { visibleTo: { name: "Groot" }}}) {
+      name
+    }
   }
   `;
 

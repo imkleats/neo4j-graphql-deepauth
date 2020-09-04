@@ -48,7 +48,7 @@ export function translate(
 
   const frags = [];
   for (const defn in resolveInfo.fragments) {
-    if (resolveInfo.fragments.hasOwnProperty(defn)) {
+    if (resolveInfo.fragments?.[defn]) {
       frags.push(resolveInfo.fragments[defn]);
     }
   }
