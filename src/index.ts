@@ -8,6 +8,7 @@ import {
   GraphQLSchema,
   OperationDefinitionNode,
   TypeInfo,
+  valueFromASTUntyped,
   visit,
   visitInParallel,
   visitWithTypeInfo,
@@ -29,7 +30,7 @@ export interface LimitedResolveInfo {
 export interface AuthAction {
   action: string;
   payload: {
-    path?: Array<string | number>;
+    path?: (string | number)[];
     node?: ArgumentNode;
   };
 }
@@ -151,4 +152,12 @@ export function applyDeepAuth(
   };
 }
 
+export function applyDeepAuthToParams(resolveInfo: GraphQLResolveInfo) {
+  // neo4j-graphql-js takes filter from params on top level, not from resolveInfo
+  // need to account for this
+  return resolveInfo?.operation?.selectionSet?.selections?.[0]?.kind === "Field" &&
+    resolveInfo.operation.selectionSet.selections[0].arguments?.filter(arg => arg.name.value === 'filter')?.map( arg => {
+      return valueFromASTUntyped(arg.value);
+    })[0];
+}
 export { validateDeepAuthSchema, getDeepAuthFromType, coerceDeepAuthInputValue } from './Utilities';
