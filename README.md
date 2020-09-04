@@ -1,13 +1,6 @@
 # neo4j-graphql-deepauth
 Directive-based support for fine-grained access control in `neo4j-graphql-js` GraphQL endpoints (i.e. GRANDstack apps). Also enables support in any non-`neo4j-graphql-js` GraphQL endpoint that exposes a `filter` field argument with nested relational filtering.
 
-## Breaking Changes from the v0.1.0-alpha
-In order to reinforce that the `path` argument should be the string representation of a valid `_<Type>Filter` Input corresponding to the ObjectType Definition on which the directive is being applied, the `path` string is no longer wrapped with brackets while processing directive arguments and applying the authorization path to the `filter`. Users upgrading from v0.0.1-alpha should wrap the inner contents of their `path` arguments in brackets as follows:
-
-`path: """ userId: "$user_id" """` would become `path: """{ userId: "$user_id" }"""`.
-
-Apologies for any inconvenience and contradicting a decision made earlier.
-
 ## Using the `neo4j-deepauth` package
 
 ### 1. Install package via NPM or Yarn
@@ -94,22 +87,24 @@ const resolvers = {
 };
 ```
 
-As alluded to above, we must modify these resolvers to replace the `resolveInfo.operation` and `resolveInfo.fragments` used by `neo4jgraphql()` with the pieces of your transformed query. That might look something like:
+As alluded to above, we must modify these resolvers to replace the `resolveInfo.operation` and `resolveInfo.fragments` used by `neo4jgraphql()` with the pieces of your transformed query. Additionallu. it should be noted that the top-level filter is obtained by `neo4jgraphql()` from the `params` argument, while subsequent filters are obtained from the `resolveInfo`. That might look something like:
 
 ```js
 import { neo4jgraphql } from "neo4j-graphql-js";
-import { applyDeepAuth } from "neo4j-deepauth";
+import { applyDeepAuth, applyDeepAuthToParams } from "neo4j-deepauth";
 
 const resolvers = {
   // entry point to GraphQL service
   Query: {
     User(object, params, ctx, resolveInfo) {
       const authResolveInfo = applyDeepAuth(params, ctx, resolveInfo);
-      return neo4jgraphql(object, params, ctx, authResolveInfo);
+      const authParams = {...params, filter: applyDeepAuthToParams(params, ctx, resolveInfo)};
+      return neo4jgraphql(object, authParams, ctx, authResolveInfo);
     },
     Task(object, params, ctx, resolveInfo) {
       const authResolveInfo = applyDeepAuth(params, ctx, resolveInfo);
-      return neo4jgraphql(object, params, ctx, authResolveInfo);
+      const authParams = {...params, filter: applyDeepAuthToParams(params, ctx, resolveInfo)};
+      return neo4jgraphql(object, authParams, ctx, authResolveInfo);
     },
   }
 };
