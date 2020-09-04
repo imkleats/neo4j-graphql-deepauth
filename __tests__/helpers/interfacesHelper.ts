@@ -51,6 +51,12 @@ const BasicAuthFilterNode = expect.objectContaining({
   ]),
 });
 
+export const BasicAuthFilterParam = {
+    visibleTo_some: {
+        name_contains: 'Groot'
+    }
+};
+
 export const BasicFilterArgumentNode = expect.objectContaining({
   kind: 'Argument',
   name: expect.objectContaining({
@@ -76,6 +82,10 @@ const BasicExistingFilterNode = expect.objectContaining({
     }),
   ]),
 });
+
+export const BasicExistingFilterParam = expect.objectContaining({
+  name: 'Groot'
+})
 
 export const QueryWithFilter = `
 query {
@@ -109,6 +119,13 @@ export const QueryWithFilterArgumentNode = expect.objectContaining({
     ]),
   }),
 });
+
+export const QueryWithFilterParams = {
+    AND: expect.arrayContaining([
+        BasicAuthFilterParam,
+        BasicExistingFilterParam
+    ])
+};
 
 export const QueryWithNestedObject = `
 query {
@@ -194,6 +211,15 @@ const NestedFilterObjectArgumentNode = expect.objectContaining({
     }),
   ]),
 });
+
+export const NestedFilterObjectArgumentParam = {
+    tasks_some: { 
+        visibleTo: {
+            name: "Groot"
+        }
+    }
+};
+
 export const QueryWithNestedFilterArgumentNode = expect.objectContaining({
   kind: 'Argument',
   name: expect.objectContaining({
@@ -229,6 +255,15 @@ export const QueryWithNestedFilterArgumentNode = expect.objectContaining({
     ]),
   }),
 });
+
+export const QueryWithNestedFilterArgumentParams = {
+    tasks_some: {
+        AND: expect.arrayContaining([
+            BasicAuthFilterParam,
+            NestedFilterObjectArgumentParam.tasks_some
+        ])
+    }
+}
 
 export const BasicTypeDefs = `
     type Task @deepAuth(

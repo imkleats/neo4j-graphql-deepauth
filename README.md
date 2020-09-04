@@ -1,6 +1,12 @@
 # neo4j-graphql-deepauth
 Directive-based support for fine-grained access control in `neo4j-graphql-js` GraphQL endpoints (i.e. GRANDstack apps). Also enables support in any non-`neo4j-graphql-js` GraphQL endpoint that exposes a `filter` field argument with nested relational filtering.
 
+## Potentially Breaking API Changes from Previous Beta Patch
+
+- `applyDeepAuth()` now returns an object with signature `{ authParams, authResolveInfo }`
+  - Previous patch exported a separate `applyDeepAuthToParams()` method.
+  - This function API should be relatively stable.
+
 ## Using the `neo4j-deepauth` package
 
 ### 1. Install package via NPM or Yarn
@@ -97,13 +103,11 @@ const resolvers = {
   // entry point to GraphQL service
   Query: {
     User(object, params, ctx, resolveInfo) {
-      const authResolveInfo = applyDeepAuth(params, ctx, resolveInfo);
-      const authParams = {...params, filter: applyDeepAuthToParams(params, ctx, resolveInfo)};
+      const { authParams, authResolveInfo } = applyDeepAuth(params, ctx, resolveInfo);
       return neo4jgraphql(object, authParams, ctx, authResolveInfo);
     },
     Task(object, params, ctx, resolveInfo) {
-      const authResolveInfo = applyDeepAuth(params, ctx, resolveInfo);
-      const authParams = {...params, filter: applyDeepAuthToParams(params, ctx, resolveInfo)};
+      const { authParams, authResolveInfo } = applyDeepAuth(params, ctx, resolveInfo);
       return neo4jgraphql(object, authParams, ctx, authResolveInfo);
     },
   }
