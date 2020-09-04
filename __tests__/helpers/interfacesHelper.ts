@@ -52,9 +52,9 @@ const BasicAuthFilterNode = expect.objectContaining({
 });
 
 export const BasicAuthFilterParam = {
-    visibleTo_some: {
-        name_contains: 'Groot'
-    }
+  visibleTo_some: {
+    name_contains: 'Groot',
+  },
 };
 
 export const BasicFilterArgumentNode = expect.objectContaining({
@@ -84,8 +84,8 @@ const BasicExistingFilterNode = expect.objectContaining({
 });
 
 export const BasicExistingFilterParam = expect.objectContaining({
-  name: 'Groot'
-})
+  name: 'Groot',
+});
 
 export const QueryWithFilter = `
 query {
@@ -121,10 +121,7 @@ export const QueryWithFilterArgumentNode = expect.objectContaining({
 });
 
 export const QueryWithFilterParams = {
-    AND: expect.arrayContaining([
-        BasicAuthFilterParam,
-        BasicExistingFilterParam
-    ])
+  AND: expect.arrayContaining([BasicAuthFilterParam, BasicExistingFilterParam]),
 };
 
 export const QueryWithNestedObject = `
@@ -183,16 +180,12 @@ export const NestedObjectFragmentResponse = {
           {
             name: 'Build Tests',
             order: [0, 1, 2, 3],
-            visibleTo: [
-              {name: 'Brian May'}
-            ]
+            visibleTo: [{ name: 'Brian May' }],
           },
           {
             name: 'More Tests',
             order: [4, 5, 6, 7],
-            visibleTo: [
-              {name: 'Roger Taylor'}
-            ]
+            visibleTo: [{ name: 'Roger Taylor' }],
           },
         ],
       },
@@ -272,11 +265,11 @@ const NestedFilterObjectArgumentNode = expect.objectContaining({
 });
 
 export const NestedFilterObjectArgumentParam = {
-    tasks_some: { 
-        visibleTo: {
-            name: "Groot"
-        }
-    }
+  tasks_some: {
+    visibleTo: {
+      name: 'Groot',
+    },
+  },
 };
 
 export const QueryWithNestedFilterArgumentNode = expect.objectContaining({
@@ -316,13 +309,10 @@ export const QueryWithNestedFilterArgumentNode = expect.objectContaining({
 });
 
 export const QueryWithNestedFilterArgumentParams = {
-    tasks_some: {
-        AND: expect.arrayContaining([
-            BasicAuthFilterParam,
-            NestedFilterObjectArgumentParam.tasks_some
-        ])
-    }
-}
+  tasks_some: {
+    AND: expect.arrayContaining([BasicAuthFilterParam, NestedFilterObjectArgumentParam.tasks_some]),
+  },
+};
 
 export const BasicTypeDefs = `
     type Task @deepAuth(

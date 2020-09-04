@@ -1,6 +1,6 @@
 {
   "name": "neo4j-deepauth",
-  "version": "0.2.0-beta.5",
+  "version": "0.2.0",
   "description": "Directive-based authorization for neo4j-graphql-js GraphQL endpoints",
   "main": "lib/index.js",
   "files": [
@@ -10,7 +10,10 @@
     "test": "jest",
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\" \"__tests__/**/*.ts\" \"__tests__/**/*.js\"",
-    "lint": "tslint -p tsconfig.json"
+    "lint": "tslint -p tsconfig.json",
+    "clean": "(if exist node_modules rd /s /q node_modules) && (if exist lib rd /s /q lib)",
+    "prebuild": "npm run clean && npm install && npm test",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
