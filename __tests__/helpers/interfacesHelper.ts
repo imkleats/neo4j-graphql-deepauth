@@ -205,6 +205,18 @@ export const QueryWithFilteredNestedObject = `
   }
   `;
 
+  export const QueryWithAuthFilteredNestedObject = `
+  query {
+      User {
+          name
+          tasks (filter: { visibleTo_some: { name_contains: "Groot" } }) {
+              name
+              order
+          }
+      }
+  }
+  `;
+
 export const QueryWithNestedFilterObject = `
   query {
       User (filter: { tasks_some: { visibleTo: { name: "Groot" }}}) {
