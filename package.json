@@ -1,6 +1,6 @@
 {
   "name": "neo4j-deepauth",
-  "version": "0.2.0",
+  "version": "0.2.1-beta.0",
   "description": "Directive-based authorization for neo4j-graphql-js GraphQL endpoints",
   "main": "lib/index.js",
   "files": [

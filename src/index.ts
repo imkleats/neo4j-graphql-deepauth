@@ -49,17 +49,17 @@ export function translate(
   const frags = [];
   for (const defn in resolveInfo.fragments) {
     if (resolveInfo.fragments?.[defn]) {
-      frags.push(resolveInfo.fragments[defn]);
+      frags.push( Object.assign({}, resolveInfo.fragments[defn] ));
     }
   }
   const documentAST: DocumentNode = {
     kind: 'Document',
     // tslint:disable-next-line: object-literal-sort-keys
-    definitions: [resolveInfo.operation, ...frags],
+    definitions: [ Object.assign({}, resolveInfo.operation), ...frags],
   };
 
   const queryMap: AstMap = {
-    originalQuery: () => documentAST,
+    originalQuery: () => Object.assign({}, documentAST),
   };
 
   const context = new TranslationContext(

@@ -5,6 +5,7 @@ import {
   FieldNode,
   GraphQLInputType,
   GraphQLInterfaceType,
+  GraphQLNamedType,
   GraphQLObjectType,
   GraphQLSchema,
   InterfaceTypeExtensionNode,
@@ -20,6 +21,7 @@ import {
   parseValue,
   valueFromAST,
   valueFromASTUntyped,
+  ValueNode,
 } from 'graphql';
 import { Maybe } from 'graphql/jsutils/Maybe';
 import { TranslationContext } from './TranslationContext';
@@ -109,13 +111,21 @@ function coerceDeepAuthInputValueImpl(inputValue: any, type: GraphQLInputType, c
     }
 
     if (isFilterInput(type.name)) {
-      const filteredType = context.getSchema().getType(getTypeNameFromFilterName(type.name));
-      const deepAuthFilter =
-        filteredType && isObjectType(filteredType)
-          ? getDeepAuthFromType(filteredType, context)
-          : isInterfaceType(filteredType)
-          ? getDeepAuthFromInterfaceType(filteredType, context)
-          : undefined;
+      const [filteredType, filteredAuthConfig] = context.getTypeFromFilterName(type.name); // context.getSchema().getType(getTypeNameFromFilterName(type.name));
+      // console.log(`Type Name: ${type.name}`);
+      // console.log(`Filtered Type: ${JSON.stringify(filteredType, null, 2)}`);
+      // console.log(`Filtered Auth Config: ${JSON.stringify(filteredAuthConfig, null, 2)}`);
+      const deepAuthFilter = filteredAuthConfig
+        ? parseDeepAuth(
+            filteredAuthConfig.path,
+            filteredAuthConfig.variables,
+            context.fromRequestContext('deepAuthParams'),
+          )
+        : filteredType && isObjectType(filteredType)
+        ? getDeepAuthFromType(filteredType, context)
+        : isInterfaceType(filteredType)
+        ? getDeepAuthFromInterfaceType(filteredType, context)
+        : undefined;
       if (deepAuthFilter) {
         coercedValue = { AND: [valueFromAST(deepAuthFilter, type), coercedValue] };
       }
@@ -159,9 +169,10 @@ function getTypeNameFromFilterName(filterName: string): string {
   return filterName.slice(1, filterName.length - 6);
 }
 
-interface DeepAuthConfig {
+export interface DeepAuthConfig {
   path: string;
   variables: string[];
+  filterInput?: string;
 }
 export function getDeepAuthFromType(type: GraphQLObjectType, context: TranslationContext) {
   // Currently does not support Union types.
@@ -172,9 +183,7 @@ export function getDeepAuthFromType(type: GraphQLObjectType, context: Translatio
     getDeepAuthFromTypeAst(type.astNode) ??
     getDeepAuthFromInterfaces(type.getInterfaces());
   return authConfig
-    ? parseValue(
-        populateArgsInPath(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams')),
-      )
+    ? parseDeepAuth(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams'))
     : undefined;
 }
 
@@ -184,13 +193,21 @@ export function getDeepAuthFromInterfaceType(type: GraphQLInterfaceType, context
   // 1) typeDef extension; 2) original typeDef; 3) Interface
   const authConfig = getDeepAuthFromInterfaces([type]);
   return authConfig
-    ? parseValue(
-        populateArgsInPath(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams')),
-      )
+    ? parseDeepAuth(authConfig.path, authConfig.variables, context.fromRequestContext('deepAuthParams'))
     : undefined;
 }
 
-function deepAuthArgumentReducer(acc: DeepAuthConfig, arg: ArgumentNode) {
+export function getDeepAuthFromConfig(
+  fieldDef: DeepAuthConfig,
+  context: TranslationContext,
+): [Maybe<ValueNode>, Maybe<GraphQLNamedType>] {
+  return [
+    parseDeepAuth(fieldDef.path, fieldDef.variables, context.fromRequestContext('deepAuthParams')),
+    context.getSchema().getType(`${fieldDef?.filterInput}`),
+  ];
+}
+
+export function deepAuthArgumentReducer(acc: DeepAuthConfig, arg: ArgumentNode) {
   switch (arg.name.value) {
     case 'path':
       if (arg.value.kind === 'StringValue') {
@@ -208,8 +225,17 @@ function deepAuthArgumentReducer(acc: DeepAuthConfig, arg: ArgumentNode) {
         acc.variables = authVariables;
       }
       break;
+    case 'filterInput':
+      if (arg.value.kind === 'StringValue') {
+        acc.filterInput = arg.value.value;
+      }
+      break;
   }
   return acc;
+}
+
+function parseDeepAuth(path: string, variables: string[], params: any) {
+  return parseValue(populateArgsInPath(path, variables, params));
 }
 
 type findDirectiveFn = (x: string) => (y: DirectiveNode) => boolean;
