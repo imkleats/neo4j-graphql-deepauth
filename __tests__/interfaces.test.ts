@@ -26,7 +26,7 @@ import {
   QueryWithNestedFilterArgumentParams,
   QueryWithNestedFragmentObject,
   QueryWithFilteredNestedFragmentObject,
-  NestedObjectFragmentResponse,
+  NestedObjectFragmentResponse, QueryWithAuthFilteredNestedObject
 } from './helpers/interfacesHelper';
 
 describe('Applying deepAuth through Extensions and Interfaces', () => {
@@ -152,6 +152,33 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
+    
+    test('nests an existing filter argument on root selection', () => {
+      const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
+        const { authParams, authResolveInfo: testTranslate } = applyDeepAuth(args, ctx, resolveInfo);
+        const { authParams: secondAuthParams, authResolveInfo: secondAuthResolverInfo } = applyDeepAuth(authParams, ctx, testTranslate);
+        // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
+        expect(testTranslate).toHaveProperty(
+          ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
+          BasicFilterArgumentNode,
+        );
+        // @ts-ignore
+        // tslint:disable-next-line: no-console
+        // console.log(JSON.stringify(testTranslate?.operation?.selectionSet?.selections?.[0]?.arguments?.[0], null, 2));
+      };
+
+      return runTestThroughResolver(
+        ExtensionTypeDefs,
+        QueryWithAuthFilteredNestedObject,
+        BasicContext,
+        'User',
+        NestedObjectResponse,
+        testFn,
+      ).then(response => {
+        expect(response).toEqual(NestedObjectResponse);
+      });
+    });
+
     test('nests the auth filter onto a nested filter on non-authed root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
         expect(args).toHaveProperty('filter', NestedFilterObjectArgumentParam);

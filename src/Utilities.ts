@@ -23,6 +23,7 @@ import {
   valueFromASTUntyped,
   ValueNode,
 } from 'graphql';
+import { isEqual } from 'lodash';
 import { Maybe } from 'graphql/jsutils/Maybe';
 import { TranslationContext } from './TranslationContext';
 
@@ -88,28 +89,7 @@ function coerceDeepAuthInputValueImpl(inputValue: any, type: GraphQLInputType, c
     const fieldDefs = type.getFields();
     const parentType = type.name;
 
-    for (const field of Object.keys(fieldDefs).map(key => fieldDefs[key])) {
-      const fieldValue = inputValue[field.name];
-
-      if (fieldValue === undefined) {
-        if (field.defaultValue !== undefined) {
-          coercedValue[field.name] = field.defaultValue;
-        } else if (isNonNullType(field.type)) {
-          throw Error('non null type requires a value or a default');
-        }
-        continue;
-      }
-
-      coercedValue[field.name] = coerceDeepAuthInputValueImpl(fieldValue, field.type, context);
-    }
-
-    // Ensure every provided field is defined.
-    for (const fieldName of Object.keys(inputValue)) {
-      if (!fieldDefs[fieldName]) {
-        throw Error('field not defined on input object');
-      }
-    }
-
+    let deepAuthFilterValue: any;
     if (isFilterInput(type.name)) {
       const [filteredType, filteredAuthConfig] = context.getTypeFromFilterName(type.name); // context.getSchema().getType(getTypeNameFromFilterName(type.name));
       // console.log(`Type Name: ${type.name}`);
@@ -127,9 +107,62 @@ function coerceDeepAuthInputValueImpl(inputValue: any, type: GraphQLInputType, c
         ? getDeepAuthFromInterfaceType(filteredType, context)
         : undefined;
       if (deepAuthFilter) {
-        coercedValue = { AND: [valueFromAST(deepAuthFilter, type), coercedValue] };
+        deepAuthFilterValue = valueFromAST(deepAuthFilter, type);
+        // Don't need to coerce any more if inputValue is an authFilter
+        if (isEqual(inputValue, deepAuthFilterValue)) return inputValue;
       }
     }
+    if (isEqual(inputValue, deepAuthFilterValue)) return inputValue;
+    let inputAndClause = false;
+    let inputAndClauseHasAuth = false;
+
+    for (const field of Object.keys(fieldDefs).map(key => fieldDefs[key])) {
+      const fieldValue = inputValue[field.name];
+
+      if (fieldValue === undefined) {
+        if (field.defaultValue !== undefined) {
+          coercedValue[field.name] = field.defaultValue;
+        } else if (isNonNullType(field.type)) {
+          throw Error('non null type requires a value or a default');
+        }
+        continue;
+      }
+
+      if (field.name === 'AND' && isCollection(inputValue[field.name])) {
+        inputAndClause = true;
+        coercedValue[field.name] = inputValue[field.name].map((pred: any) => {
+          if (isEqual(pred, deepAuthFilterValue)) {
+            inputAndClauseHasAuth = true;
+            return pred;
+          } else {
+            // By definition, AND fields are of same type as parent
+            return coerceDeepAuthInputValueImpl(pred, field.type, context);
+          }
+        });
+        continue;
+      }
+
+      coercedValue[field.name] =
+        isEqual(fieldValue, deepAuthFilterValue)
+          ? deepAuthFilterValue
+          : coerceDeepAuthInputValueImpl(fieldValue, field.type, context);
+    }
+
+    // Ensure every provided field is defined.
+    for (const fieldName of Object.keys(inputValue)) {
+      if (!fieldDefs[fieldName]) {
+        throw Error('field not defined on input object');
+      }
+    }
+
+    coercedValue = deepAuthFilterValue
+      ? inputAndClauseHasAuth
+        ? coercedValue
+        : inputAndClause
+        ? { ...coercedValue, AND: [deepAuthFilterValue, coercedValue.AND] }
+        : { AND: [deepAuthFilterValue, coercedValue] }
+      : coercedValue;
+
     return coercedValue;
   }
 

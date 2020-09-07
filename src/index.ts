@@ -49,13 +49,13 @@ export function translate(
   const frags = [];
   for (const defn in resolveInfo.fragments) {
     if (resolveInfo.fragments?.[defn]) {
-      frags.push( Object.assign({}, resolveInfo.fragments[defn] ));
+      frags.push(resolveInfo.fragments[defn]);
     }
   }
   const documentAST: DocumentNode = {
     kind: 'Document',
     // tslint:disable-next-line: object-literal-sort-keys
-    definitions: [ Object.assign({}, resolveInfo.operation), ...frags],
+    definitions: [resolveInfo.operation, ...frags],
   };
 
   const queryMap: AstMap = {
