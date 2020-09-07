@@ -13,9 +13,11 @@ import {
 import { TranslationContext } from '../TranslationContext';
 import {
   coerceDeepAuthInputValue,
+  getDeepAuthFromConfig,
   getDeepAuthFromInterfaceType,
   getDeepAuthFromType,
   getExistingFilter,
+  deepAuthArgumentReducer,
 } from '../Utilities';
 
 export default function AuthorizationFilterRule(
@@ -27,6 +29,8 @@ export default function AuthorizationFilterRule(
       // The Document visitor establishes necessary parts of the
       Document() {
         context.postToAstMap({ loc: 'authFilters', node: () => context.getAuthActions() });
+        // tslint:disable-next-line: no-console
+        // console.log(JSON.stringify(context.getFilterMap(), null, 2));
       },
 
       // The Field visitor assesses whether each field of a selection
@@ -49,16 +53,26 @@ export default function AuthorizationFilterRule(
         path: ReadonlyArray<string | number>,
         ancestors: any,
       ) {
+        // Check if Field Definition contains a
+        const fieldDef = context.getFieldDef()?.astNode?.directives?.find(dir => dir.name.value === 'deepAuth');
+        const fieldAuthConfig =
+          fieldDef && fieldDef.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [], filterInput: '' });
+        const [fieldAuthFilter, fieldFilterInputType] = fieldAuthConfig
+          ? getDeepAuthFromConfig(fieldAuthConfig, context)
+          : [undefined, undefined];
+
         const fieldType = context.getType();
         const innerType = fieldType ? getNamedType(fieldType) : undefined;
-        // Currently does not support Interface or Union types.
-        // Check for ObjectTypes that can have @deepAuth directive.
-        const filterInputType = context.getSchema().getType(`_${innerType?.name}Filter`);
-        const authFilter = isObjectType(innerType)
-          ? getDeepAuthFromType(innerType, context)
-          : isInterfaceType(innerType)
-          ? getDeepAuthFromInterfaceType(innerType, context)
-          : undefined;
+        // Currently does not support Union types.
+        // Check for Object & Interface Types that can have @deepAuth directive.
+        const filterInputType = fieldFilterInputType ?? context.getFilterFromTypeName(innerType?.name ?? ''); // context.getSchema().getType(`_${innerType?.name}Filter`);
+        const authFilter =
+          fieldAuthFilter ??
+          (isObjectType(innerType)
+            ? getDeepAuthFromType(innerType, context)
+            : isInterfaceType(innerType)
+            ? getDeepAuthFromInterfaceType(innerType, context)
+            : undefined);
 
         // Get user-submitted Filter argument & index of that argument in the Field's Arguments array
         const [existingFilter, argIndex] = getExistingFilter(node) ?? [undefined, 0];

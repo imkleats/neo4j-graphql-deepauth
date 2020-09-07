@@ -59,7 +59,7 @@ export function translate(
   };
 
   const queryMap: AstMap = {
-    originalQuery: () => documentAST,
+    originalQuery: () => Object.assign({}, documentAST),
   };
 
   const context = new TranslationContext(
