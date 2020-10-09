@@ -66,6 +66,62 @@ export const BasicFilterArgumentNode = expect.objectContaining({
   value: BasicAuthFilterNode,
 });
 
+const DuplicateAuthFilterNode = expect.objectContaining({
+  kind: 'ObjectValue',
+  fields: expect.arrayContaining([
+    expect.objectContaining({
+      kind: 'ObjectField',
+      name: expect.objectContaining({
+        kind: 'Name',
+        value: 'visibleTo_some',
+      }),
+      value: expect.objectContaining({
+        kind: 'ObjectValue',
+        fields: expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'ObjectField',
+            name: expect.objectContaining({
+              kind: 'Name',
+              value: 'name_contains',
+            }),
+            value: expect.objectContaining({
+              kind: 'StringValue',
+              value: 'Groot',
+            }),
+          }),
+        ]),
+      }),
+    }),
+    expect.objectContaining({
+      kind: 'ObjectField',
+      name: expect.objectContaining({
+        kind: 'Name',
+        value: 'name_contains',
+      }),
+      value: expect.objectContaining({
+        kind: 'StringValue',
+        value: 'Groot',
+      }),
+    }),
+  ]),
+});
+
+export const DuplicateAuthFilterParam = {
+  visibleTo_some: {
+    name_contains: 'Groot',
+  },
+  name_contains: 'Groot',
+};
+
+export const DuplicateFilterArgumentNode = expect.objectContaining({
+  kind: 'Argument',
+  name: expect.objectContaining({
+    kind: 'Name',
+    value: 'filter',
+  }),
+  value: DuplicateAuthFilterNode,
+});
+
 const BasicExistingFilterNode = expect.objectContaining({
   kind: 'ObjectValue',
   fields: expect.arrayContaining([
@@ -205,7 +261,7 @@ export const QueryWithFilteredNestedObject = `
   }
   `;
 
-  export const QueryWithAuthFilteredNestedObject = `
+export const QueryWithAuthFilteredNestedObject = `
   query {
       User {
           name
@@ -329,6 +385,25 @@ export const QueryWithNestedFilterArgumentParams = {
 export const BasicTypeDefs = `
     type Task @deepAuth(
         path: """{ visibleTo_some: { name_contains: "$user_id" } }""",
+        variables: ["$user_id"]
+    ) {
+        name: String
+        order: [Int]
+        visibleTo: [User] @relation(name: "CAN_SEE" direction: "IN")
+    }
+    type User {
+        name: String
+        tasks: [Task] @relation(name: "CAN_SEE" direction: "OUT")
+    }
+    directive @deepAuth(
+        path: String
+        variables: [String]
+    ) on OBJECT
+`;
+
+export const DuplicateTypeDefs = `
+    type Task @deepAuth(
+        path: """{ visibleTo_some: { name_contains: "$user_id" } name_contains: "$user_id" }""",
         variables: ["$user_id"]
     ) {
         name: String

@@ -23,7 +23,7 @@ import {
   valueFromASTUntyped,
   ValueNode,
 } from 'graphql';
-import { isEqual } from 'lodash';
+import { escapeRegExp, isEqual } from 'lodash';
 import { Maybe } from 'graphql/jsutils/Maybe';
 import { TranslationContext } from './TranslationContext';
 
@@ -33,11 +33,11 @@ export function validateDeepAuthSchema(schema: GraphQLSchema) {
     // Apply neo4jgraphql naming convention to find filter Input Object type name
     const filterInputTypeName = `_${namedType}Filter`;
     typeMap[namedType].astNode?.directives
-      ?.filter(directive => directive.name.value === 'deepAuth')
-      .map(directive =>
+      ?.filter((directive) => directive.name.value === 'deepAuth')
+      .map((directive) =>
         directive.arguments
-          ?.filter(arg => arg.name.value === 'path')
-          ?.map(pathNode => {
+          ?.filter((arg) => arg.name.value === 'path')
+          ?.map((pathNode) => {
             const path = pathNode.value?.kind === 'StringValue' ? pathNode.value.value : '';
             const filterInputType = schema.getType(filterInputTypeName);
             if (isInputType(filterInputType)) {
@@ -116,7 +116,7 @@ function coerceDeepAuthInputValueImpl(inputValue: any, type: GraphQLInputType, c
     let inputAndClause = false;
     let inputAndClauseHasAuth = false;
 
-    for (const field of Object.keys(fieldDefs).map(key => fieldDefs[key])) {
+    for (const field of Object.keys(fieldDefs).map((key) => fieldDefs[key])) {
       const fieldValue = inputValue[field.name];
 
       if (fieldValue === undefined) {
@@ -142,10 +142,9 @@ function coerceDeepAuthInputValueImpl(inputValue: any, type: GraphQLInputType, c
         continue;
       }
 
-      coercedValue[field.name] =
-        isEqual(fieldValue, deepAuthFilterValue)
-          ? deepAuthFilterValue
-          : coerceDeepAuthInputValueImpl(fieldValue, field.type, context);
+      coercedValue[field.name] = isEqual(fieldValue, deepAuthFilterValue)
+        ? deepAuthFilterValue
+        : coerceDeepAuthInputValueImpl(fieldValue, field.type, context);
     }
 
     // Ensure every provided field is defined.
@@ -250,7 +249,7 @@ export function deepAuthArgumentReducer(acc: DeepAuthConfig, arg: ArgumentNode) 
     case 'variables':
       const authVariables: string[] = [];
       if (arg.value.kind === 'ListValue') {
-        arg.value.values.map(varArg => {
+        arg.value.values.map((varArg) => {
           if (varArg.kind === 'StringValue') {
             authVariables.push(varArg.value);
           }
@@ -286,11 +285,11 @@ export function getDeepAuthFromTypeAst(typeDef: Maybe<ObjectTypeDefinitionNode> 
 export function getDeepAuthFromInterfaces(interfaces: GraphQLInterfaceType[]) {
   return (
     interfaces
-      ?.find(inter => inter?.astNode?.directives?.find(findDirective('deepAuth')))
+      ?.find((inter) => inter?.astNode?.directives?.find(findDirective('deepAuth')))
       ?.astNode?.directives?.find(findDirective('deepAuth'))
       ?.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [] }) ??
     interfaces
-      ?.find(inter => inter?.extensionASTNodes?.find(findExtensionWithDirective('deepAuth', findDirective)))
+      ?.find((inter) => inter?.extensionASTNodes?.find(findExtensionWithDirective('deepAuth', findDirective)))
       ?.extensionASTNodes?.find(findExtensionWithDirective('deepAuth', findDirective))
       ?.directives?.find(findDirective('deepAuth'))
       ?.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [] })
@@ -306,7 +305,7 @@ export function getDeepAuthFromTypeExtensionAst(extensions: Maybe<readonly Objec
 
 function populateArgsInPath(myPath: string, args: string[], ctxParams: any): string {
   const populatedPath = args?.reduce((acc: string, param: string) => {
-    return acc.replace(param, ctxParams[param]);
+    return acc.replace(new RegExp(escapeRegExp(param), 'g'), ctxParams[param]);
   }, myPath);
   return populatedPath;
 }

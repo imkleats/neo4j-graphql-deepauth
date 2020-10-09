@@ -26,7 +26,11 @@ import {
   QueryWithNestedFilterArgumentParams,
   QueryWithNestedFragmentObject,
   QueryWithFilteredNestedFragmentObject,
-  NestedObjectFragmentResponse, QueryWithAuthFilteredNestedObject
+  NestedObjectFragmentResponse,
+  QueryWithAuthFilteredNestedObject,
+  DuplicateFilterArgumentNode,
+  DuplicateAuthFilterParam,
+  DuplicateTypeDefs,
 } from './helpers/interfacesHelper';
 
 describe('Applying deepAuth through Extensions and Interfaces', () => {
@@ -46,7 +50,27 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
       };
 
       return runTestThroughResolver(ExtensionTypeDefs, BasicQuery, BasicContext, 'Task', BasicResponse, testFn).then(
-        response => {
+        (response) => {
+          expect(response).toEqual(BasicResponse);
+        },
+      );
+    });
+    test('adds the auth filter argument to all instances of auth variable declared', () => {
+      const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
+        expect(args.filter).toBeUndefined();
+        const { authParams, authResolveInfo: testTranslate } = applyDeepAuth(args, ctx, resolveInfo);
+        expect(authParams).toHaveProperty('filter', DuplicateAuthFilterParam);
+        expect(testTranslate).toHaveProperty(
+          ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
+          DuplicateFilterArgumentNode,
+        );
+        // @ts-ignore
+        // tslint:disable-next-line: no-console
+        // console.log(JSON.stringify(testTranslate?.operation?.selectionSet?.selections?.[0]?.arguments?.[0], null, 2));
+      };
+
+      return runTestThroughResolver(DuplicateTypeDefs, BasicQuery, BasicContext, 'Task', BasicResponse, testFn).then(
+        (response) => {
           expect(response).toEqual(BasicResponse);
         },
       );
@@ -72,7 +96,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'Task',
         BasicResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(BasicResponse);
       });
     });
@@ -98,7 +122,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -124,7 +148,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -148,15 +172,19 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
-    
+
     test('nests an existing filter argument on root selection', () => {
       const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
         const { authParams, authResolveInfo: testTranslate } = applyDeepAuth(args, ctx, resolveInfo);
-        const { authParams: secondAuthParams, authResolveInfo: secondAuthResolverInfo } = applyDeepAuth(authParams, ctx, testTranslate);
+        const { authParams: secondAuthParams, authResolveInfo: secondAuthResolverInfo } = applyDeepAuth(
+          authParams,
+          ctx,
+          testTranslate,
+        );
         // isObjectType(resolveInfo.returnType) ? resolveInfo.returnType.getInterfaces()
         expect(testTranslate).toHaveProperty(
           ['operation', 'selectionSet', 'selections', 0, 'selectionSet', 'selections', 1, 'arguments', 0],
@@ -174,7 +202,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -201,7 +229,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -227,7 +255,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectFragmentResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectFragmentResponse);
       });
     });
@@ -247,7 +275,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
       };
 
       return runTestThroughResolver(InterfaceTypeDefs, BasicQuery, BasicContext, 'Task', BasicResponse, testFn).then(
-        response => {
+        (response) => {
           expect(response).toEqual(BasicResponse);
         },
       );
@@ -272,7 +300,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'Task',
         BasicResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(BasicResponse);
       });
     });
@@ -296,7 +324,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -320,7 +348,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -344,7 +372,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -370,7 +398,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'Task',
         BasicResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(BasicResponse);
       });
     });
@@ -394,7 +422,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'Task',
         BasicResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(BasicResponse);
       });
     });
@@ -418,7 +446,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -442,7 +470,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
@@ -466,7 +494,7 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'User',
         NestedObjectResponse,
         testFn,
-      ).then(response => {
+      ).then((response) => {
         expect(response).toEqual(NestedObjectResponse);
       });
     });
