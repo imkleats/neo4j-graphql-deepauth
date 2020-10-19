@@ -8,6 +8,7 @@ import {
   GraphQLInputType,
   GraphQLNamedType,
   GraphQLOutputType,
+  GraphQLResolveInfo,
   GraphQLSchema,
   isObjectType,
   TypeInfo,
@@ -25,6 +26,7 @@ export class TranslationContext {
   protected storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void;
   protected getAstNode: (astMapLoc: string) => AstCoalescer;
   protected schema: GraphQLSchema;
+  protected gqlVariables: { [variableName: string]: any };
   protected filterMap: { [key: string]: [GraphQLNamedType, DeepAuthConfig | undefined] };
   protected typeFilters: { [key: string]: string };
   protected typeInfo: TypeInfo;
@@ -36,7 +38,7 @@ export class TranslationContext {
   constructor(
     params: { [argName: string]: any }, // is this needed? or is it already in resolveInfo?
     reqCtx: any,
-    resolveInfo: ResolveInfo,
+    resolveInfo: GraphQLResolveInfo,
     typeInfo: TypeInfo,
     storeAstNode: (astMapNode: { loc: string; node: AstCoalescer }) => void,
     getAstNode: (astMapLoc: string) => AstCoalescer,
@@ -52,20 +54,21 @@ export class TranslationContext {
     this.authActions = [];
     this.filterMap = {};
     this.typeFilters = {};
+    this.gqlVariables = resolveInfo.variableValues;
 
     this._initializeFilterMap();
   }
 
   private _initializeFilterMap() {
     const typeMap = this.schema.getTypeMap();
-    Object.keys(typeMap).map(typeName => {
+    Object.keys(typeMap).map((typeName) => {
       const type = typeMap[typeName];
       if (isObjectType(type)) {
         const fieldMap = type.getFields();
-        Object.keys(fieldMap).map(fieldName => {
+        Object.keys(fieldMap).map((fieldName) => {
           const fieldType = getNamedType(fieldMap[fieldName].type);
-          const fieldFilterArgument = fieldMap[fieldName].args.find(arg => arg.name === 'filter');
-          const fieldAuthDef = fieldMap[fieldName].astNode?.directives?.find(dir => dir.name.value === 'deepAuth');
+          const fieldFilterArgument = fieldMap[fieldName].args.find((arg) => arg.name === 'filter');
+          const fieldAuthDef = fieldMap[fieldName].astNode?.directives?.find((dir) => dir.name.value === 'deepAuth');
           const fieldAuthConfig =
             fieldAuthDef &&
             fieldAuthDef.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [], filterInput: '' });
@@ -150,5 +153,9 @@ export class TranslationContext {
 
   public fromRequestContext(arg: string) {
     return this.reqCtx[arg];
+  }
+
+  public getVariableValues() {
+    return this.gqlVariables;
   }
 }

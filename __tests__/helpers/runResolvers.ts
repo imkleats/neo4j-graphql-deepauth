@@ -9,13 +9,14 @@ export function runTestThroughResolver(
   typeName: string,
   mockReturn: any,
   testFn: (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => void,
+  variables: any = {},
 ): Promise<ExecutionResult> {
   const resolvers = resolverShell(typeName, mockReturn, testFn);
   const schema = makeAugmentedSchema({
     resolvers,
     typeDefs,
   });
-  return graphql(schema, query, null, context);
+  return graphql(schema, query, null, context, variables);
 }
 
 export const goodQuery = `

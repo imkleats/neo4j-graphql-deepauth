@@ -152,6 +152,15 @@ query {
 }
 `;
 
+export const QueryWithFilterVariables = `
+query($testName: String) {
+    Task(filter: { name: $testName }) {
+        name
+        order
+    }
+}
+`;
+
 export const QueryWithFilterArgumentNode = expect.objectContaining({
   kind: 'Argument',
   name: expect.objectContaining({
