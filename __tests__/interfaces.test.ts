@@ -14,6 +14,7 @@ import {
   BasicFilterArgumentNode,
   BasicAuthFilterParam,
   QueryWithFilter,
+  QueryWithFilterVariables,
   QueryWithFilterArgumentNode,
   QueryWithNestedObject,
   QueryWithFilteredNestedObject,
@@ -96,6 +97,32 @@ describe('Applying deepAuth through Extensions and Interfaces', () => {
         'Task',
         BasicResponse,
         testFn,
+      ).then((response) => {
+        expect(response).toEqual(BasicResponse);
+      });
+    });
+    test('nests an existing filter argument using variables on root selection', () => {
+      const testFn = (object: any, args: { [argName: string]: any }, ctx: any, resolveInfo: GraphQLResolveInfo) => {
+        expect(args).toHaveProperty('filter', BasicExistingFilterParam);
+        const { authParams, authResolveInfo: testTranslate } = applyDeepAuth(args, ctx, resolveInfo);
+        expect(authParams).toHaveProperty('filter', QueryWithFilterParams);
+        expect(testTranslate).toHaveProperty(
+          ['operation', 'selectionSet', 'selections', 0, 'arguments', 0],
+          QueryWithFilterArgumentNode,
+        );
+        // @ts-ignore
+        // tslint:disable-next-line: no-console
+        // console.log(JSON.stringify(testTranslate?.operation?.selectionSet?.selections?.[0]?.arguments?.[0], null, 2));
+      };
+
+      return runTestThroughResolver(
+        ExtensionTypeDefs,
+        QueryWithFilterVariables,
+        BasicContext,
+        'Task',
+        BasicResponse,
+        testFn,
+        { testName: 'Groot' },
       ).then((response) => {
         expect(response).toEqual(BasicResponse);
       });

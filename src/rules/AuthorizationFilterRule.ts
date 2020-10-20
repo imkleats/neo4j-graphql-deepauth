@@ -54,7 +54,7 @@ export default function AuthorizationFilterRule(
         ancestors: any,
       ) {
         // Check if Field Definition contains a
-        const fieldDef = context.getFieldDef()?.astNode?.directives?.find(dir => dir.name.value === 'deepAuth');
+        const fieldDef = context.getFieldDef()?.astNode?.directives?.find((dir) => dir.name.value === 'deepAuth');
         const fieldAuthConfig =
           fieldDef && fieldDef.arguments?.reduce(deepAuthArgumentReducer, { path: '', variables: [], filterInput: '' });
         const [fieldAuthFilter, fieldFilterInputType] = fieldAuthConfig
@@ -91,7 +91,11 @@ export default function AuthorizationFilterRule(
                 name: { kind: 'Name', value: 'filter' },
                 // `value` must be type ValueNode.
                 value: astFromValue(
-                  coerceDeepAuthInputValue(valueFromASTUntyped(existingFilter.value), filterInputType, context),
+                  coerceDeepAuthInputValue(
+                    valueFromASTUntyped(existingFilter.value, context.getVariableValues()),
+                    filterInputType,
+                    context,
+                  ),
                   filterInputType,
                 ),
               },
